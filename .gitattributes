@@ -1,0 +1,6 @@
+# Fim de linha LF em todo texto: scripts .sh com CRLF quebram no Git Bash do Windows.
+* text=auto eol=lf
+
+*.pdf binary
+*.png binary
+*.jpg binary
