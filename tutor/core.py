@@ -6,12 +6,15 @@ Tudo o que toca o disco ou o relógio passa por aqui. O resto do motor recebe um
 
 from __future__ import annotations
 
+import base64
+import binascii
 import contextlib
 import json
 import os
 import re
 import tempfile
 import unicodedata
+import zlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -153,6 +156,125 @@ class Context:
     clock: Clock
 
 
+@dataclass(frozen=True)
+class SubjectPaths:
+    """Onde fica cada arquivo de uma matéria. Um único lugar para os nomes."""
+
+    root: Path
+
+    @property
+    def slug(self) -> str:
+        return self.root.name
+
+    def __getattr__(self, name: str) -> Path:
+        try:
+            return self.root / _SUBJECT_FILES[name]
+        except KeyError:
+            raise AttributeError(name) from None
+
+
+_SUBJECT_FILES = {
+    "fontes": "fontes",
+    "provas": "fontes/provas",
+    "materia": "materia.json",
+    "contrato": "CLAUDE.md",
+    "mapa": "mapa-conhecimento.json",
+    "plano": "plano.md",
+    "banco": "banco",
+    "questoes": "banco/questoes.json",
+    "gabarito": "banco/gabarito.json",
+    "verificacao": "banco/verificacao.json",
+    "verificacao_md": "banco/verificacao.md",
+    "rascunhos": "banco/rascunhos",
+    "estado": "estado",
+    "tentativas": "estado/tentativas.jsonl",
+    "sessao": "estado/sessao.json",
+    "revisoes": "estado/revisoes.json",
+    "simulado": "estado/simulado-atual.json",
+    "simulados": "estado/simulados.jsonl",
+    "dominio": "estado/dominio.md",
+    "diario": "estado/diario.md",
+    "proximo": "estado/proximo-passo.md",
+    "caderno": "estado/caderno-de-erros.md",
+    "ingestao": "ingestao",
+    "protegido": "ingestao/protegido",
+    "figuras_temp": "ingestao/figuras-temp",
+    "indice": "ingestao/indice.json",
+    "notas": "notas",
+}
+
+
+def resolve_subject(ctx: Context, slug: str | None) -> SubjectPaths:
+    """Matéria pedida; sem nome, a última usada ou a única existente."""
+    if slug:
+        folder = ctx.workspace.subject_dir(slug)
+        if not folder.is_dir():
+            raise TutorError(
+                "materia_inexistente",
+                f"A matéria {slug!r} não existe em subjects/.",
+                "Mostre as matérias disponíveis com `bash bin/tutor.sh materias` e pergunte qual usar.",
+            )
+        return SubjectPaths(folder)
+    candidates = []
+    if ctx.workspace.subjects.is_dir():
+        candidates = sorted(
+            d.name for d in ctx.workspace.subjects.iterdir()
+            if d.is_dir() and not d.name.startswith(".") and is_valid_slug(d.name)
+        )
+    last = read_local_state(ctx).get("ultima_materia")
+    if isinstance(last, str) and last in candidates:
+        return SubjectPaths(ctx.workspace.subjects / last)
+    if len(candidates) == 1:
+        return SubjectPaths(ctx.workspace.subjects / candidates[0])
+    raise TutorError(
+        "materia_ambigua" if candidates else "sem_materias",
+        "Informe a matéria com --materia." if candidates else "Ainda não há matérias em subjects/.",
+        "Pergunte ao aluno qual matéria usar (lista em `materias`)." if candidates
+        else "Explique como criar subjects/<nome>/fontes/ e rodar /nova-materia <nome>.",
+        materias=candidates,
+    )
+
+
+def read_local_state(ctx: Context) -> dict[str, Any]:
+    """Estado local (ignorado pelo git). Arquivo corrompido vale como vazio."""
+    try:
+        data = read_json(ctx.workspace.local_state_file, {})
+    except TutorError:
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def remember_subject(ctx: Context, slug: str) -> None:
+    data = read_local_state(ctx)
+    if data.get("ultima_materia") != slug:
+        data["ultima_materia"] = slug
+        write_json(ctx.workspace.local_state_file, data)
+
+
+SETUP_STEPS = ("inventario", "perguntas", "ingestao", "mapa", "plano", "banco", "contrato")
+
+
+def mark_step(paths: SubjectPaths, step: str, ok: bool) -> None:
+    """Marca uma etapa da preparação da matéria (sem efeito se ainda não há materia.json)."""
+    materia = read_json(paths.materia)
+    if materia is None:
+        return
+    steps = materia.setdefault("etapas", {s: "pendente" for s in SETUP_STEPS})
+    steps[step] = "ok" if ok else "pendente"
+    write_json(paths.materia, materia)
+
+
+def load_materia(paths: SubjectPaths) -> dict[str, Any]:
+    data = read_json(paths.materia)
+    if data is None:
+        raise TutorError(
+            "materia_nao_inicializada",
+            f"A matéria {paths.slug!r} ainda não foi preparada (falta materia.json).",
+            f"Sugira /nova-materia {paths.slug}.",
+        )
+    return check_schema(data, paths.materia)
+
+
 # ---------------------------------------------------------------- armazenamento
 
 
@@ -237,3 +359,48 @@ def check_schema(data: Any, path: Path, expected: int = SCHEMA_VERSION) -> dict[
             arquivo=str(path),
         )
     return data
+
+
+# ---------------------------------------------------------------- arquivos protegidos
+
+PROTECTED_ENCODING = "zlib+base64"
+PROTECTED_NOTICE = (
+    "Conteúdo codificado (zlib + base64) para não ser lido por acidente durante o estudo, "
+    "nem pelo tutor nem por você. Não é criptografia. Para ver em texto, rode no seu próprio "
+    "terminal: bash bin/tutor.sh banco exportar --materia <slug> --para <arquivo>"
+)
+
+
+def encode_protected(payload: Any) -> str:
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    return base64.b64encode(zlib.compress(raw, 9)).decode("ascii")
+
+
+def decode_protected(blob: str) -> Any:
+    try:
+        return json.loads(zlib.decompress(base64.b64decode(blob.encode("ascii"), validate=True)).decode("utf-8"))
+    except (binascii.Error, zlib.error, UnicodeDecodeError, ValueError) as exc:
+        raise TutorError("protegido_corrompido", f"Conteúdo protegido ilegível: {exc}.") from exc
+
+
+def write_protected(path: Path, slug: str, payload: Any) -> None:
+    write_json(
+        path,
+        {
+            "schema_version": SCHEMA_VERSION,
+            "materia": slug,
+            "aviso": PROTECTED_NOTICE,
+            "codificacao": PROTECTED_ENCODING,
+            "conteudo": encode_protected(payload),
+        },
+    )
+
+
+def read_protected(path: Path, default: Any = None) -> Any:
+    data = read_json(path)
+    if data is None:
+        return default
+    check_schema(data, path)
+    if data.get("codificacao") != PROTECTED_ENCODING:
+        raise TutorError("protegido_corrompido", f"{path.name}: codificação desconhecida.", arquivo=str(path))
+    return decode_protected(data.get("conteudo", ""))
