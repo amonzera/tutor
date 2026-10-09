@@ -12,7 +12,7 @@ import json
 import sys
 from typing import Any, Callable
 
-from tutor import __version__, subjects
+from tutor import __version__, attempts, bank, calc, guard, ingest, planner, report, selection, srs, subjects
 from tutor.core import Context, TutorError, Workspace, clock_from_env
 
 Handler = Callable[[argparse.Namespace, Context], "dict[str, Any] | None"]
@@ -53,7 +53,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--versao", action="version", version=f"tutor {__version__}")
     sub = parser.add_subparsers(dest="subcomando", metavar="<subcomando>", parser_class=_Parser)
-    subjects.add_commands(sub)
+    for module in (subjects, ingest, bank, attempts, selection, srs, planner, report, calc, guard):
+        module.add_commands(sub)
     return parser
 
 
