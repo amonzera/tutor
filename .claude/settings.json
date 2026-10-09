@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(bash bin/tutor.sh *)"
+    ],
+    "deny": [
+      "Read(**/banco/gabarito.json)",
+      "Read(**/banco/verificacao.json)",
+      "Read(**/estado/tentativas.jsonl)",
+      "Read(**/ingestao/protegido/**)",
+      "Read(**/fontes/provas/**)",
+      "Read(.env)",
+      "Read(.env.*)"
+    ]
+  },
+  "claudeMdExcludes": [
+    "**/subjects/*/fontes/**/CLAUDE.md",
+    "**/subjects/*/fontes/**/CLAUDE.local.md",
+    "**/subjects/*/fontes/**/AGENTS.md",
+    "**/subjects/*/ingestao/**/CLAUDE.md",
+    "**/subjects/*/ingestao/**/AGENTS.md"
+  ],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/bin/tutor.sh\" inicio-sessao || true",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,32 @@
+tutor
+Copyright (c) 2026 Amon Pires
+Licenciado sob a licença MIT (veja LICENSE).
+
+Créditos e inspirações
+======================
+
+1. learn-faster-kit
+   Autor: Hugo Lau. Licença: MIT ("Copyright (c) 2025 Hugo Lau").
+   https://github.com/hluaguo/learn-faster-kit
+
+   Um projeto anterior de estudo pessoal foi montado sobre o learn-faster-kit.
+   Este repositório é uma reimplementação limpa: nenhum arquivo, trecho de
+   código ou texto do learn-faster-kit foi copiado. Ficam creditadas as ideias
+   que serviram de ponto de partida: conduzir o estudo por comandos do Claude
+   Code, agendar revisões espaçadas e devolver, nos scripts, um campo
+   `llm_directive` que orienta o agente sobre o próximo passo.
+
+2. FASTER
+   Mnemônico de método de estudo (Forget, Act, State, Teach, Enter, Review)
+   popularizado por Jim Kwik no livro "Limitless" (Hay House, 2020). É usado aqui só como
+   inspiração de organização. Não é um modelo validado por pesquisa: cada
+   princípio adotado pelo tutor está ligado às evidências descritas em
+   docs/CIENCIA-DA-APRENDIZAGEM.md.
+
+Conteúdo de terceiros
+=====================
+
+Nenhum. A matéria de exemplo (examples/probabilidade-basica/) é original e
+fictícia. Os materiais que cada aluno coloca em subjects/ são dele, ficam fora
+do controle de versão e continuam sujeitos aos direitos autorais de seus
+autores.

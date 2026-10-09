@@ -1,0 +1,22 @@
+# Dados de estudo ficam fora do git (privacidade e direitos autorais das fontes).
+# Só o README e o .gitkeep de subjects/ são versionados.
+/subjects/*
+!/subjects/README.md
+!/subjects/.gitkeep
+
+# Preferências pessoais do Claude Code
+/.claude/settings.local.json
+CLAUDE.local.md
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Resultados de evals e temporários
+/evals/resultados/
+*.tmp
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+*:Zone.Identifier
