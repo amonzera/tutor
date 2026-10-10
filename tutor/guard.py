@@ -5,15 +5,20 @@ responde com `permissionDecision: "deny"` e o motivo. Sem violação, não impri
 nada e a permissão segue o fluxo normal do Claude Code.
 
 Regras:
-1. O agente `verificador` resolve às cegas: só usa o motor para `apresentar`, `calc`
-   e `banco registrar-verificacao`, sem operadores de shell.
+1. O agente `verificador` resolve às cegas: só roda, literalmente,
+   `bash bin/tutor.sh apresentar ... --modo verificacao`, `bash bin/tutor.sh calc ...` e
+   `bash bin/tutor.sh banco registrar-verificacao ...`, sem operadores, variáveis,
+   comentários nem quebras de linha (lista fechada sobre o comando inteiro).
 2. Texto da área protegida (`texto --protegido`) e páginas renderizadas (`renderizar`)
    só para o agente `ingestor-de-fontes`.
 3. `banco exportar` é para o aluno rodar no próprio terminal, nunca para um agente.
-4. Fora do motor, nenhum comando toca arquivos protegidos (gabarito, respostas do
-   verificador, tentativas, área protegida, provas, rascunhos).
-5. Nenhuma busca recursiva (grep -r, rg, git grep, find -exec...) alcança subjects/
-   ou examples/: use `bash bin/tutor.sh buscar`, que pula a área protegida.
+4. `banco registrar-verificacao` só para o verificador.
+5. Chamadas ao motor com variáveis de ambiente na frente são negadas (exceto o relógio
+   de testes, TUTOR_HOJE e TUTOR_AGORA): `BASH_ENV=...` ou `PYTHONPATH=...` executariam código.
+6. Fora do motor, nenhum comando toca arquivos protegidos (gabarito, respostas do
+   verificador, tentativas, área protegida, provas, rascunhos, figuras temporárias).
+7. Nenhuma busca recursiva (grep -r, rg, git grep, find -exec, ferramenta Grep...)
+   alcança subjects/ ou examples/: use `bash bin/tutor.sh buscar`.
 
 É uma camada a mais, não um cofre: variações de comando podem escapar. A proteção
 principal é estrutural (arquivos codificados, correção que exige a resposta).
@@ -26,30 +31,49 @@ import json
 import re
 import shlex
 import sys
+from pathlib import Path
 from typing import Any
 
-from tutor.core import Context
+from tutor.core import Context, repo_root
 
 VERIFIER = "verificador"
 INGESTOR = "ingestor-de-fontes"
 WRITERS = {INGESTOR, "escritor-de-questoes"}
-VERIFIER_SUBCOMMANDS = (("apresentar",), ("calc",), ("banco", "registrar-verificacao"))
+VERIFIER_COMMAND = re.compile(
+    r"bash (?:\./)?bin/tutor\.sh "
+    r"(?:apresentar(?= [^\n]*--modo verificacao(?: |$))|calc|banco registrar-verificacao)"
+    r"(?: [^\n\r#;&|<>$`\\]*)?"
+)
 PROTECTED_MARKERS = (
     "gabarito.json", "verificacao.json", "tentativas.jsonl", "ingestao/protegido", "fontes/provas",
     "banco/rascunhos", "figuras-temp",
 )
 WRITER_MARKERS = ("banco/rascunhos", "figuras-temp")
-OPERATORS = {";", "&", "&&", "|", "||", "|&", ";;", "(", ")", "<", ">", ">>", "<<", "&>"}
+OPERATOR_CHARS = set("();<>|&")
 SHELL_PREFIXES = {"do", "then", "else", "elif", "if", "while", "until", "!", "time", "command", "exec", "env", "{"}
-ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
+ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=.*")
+SAFE_VARIABLES = {"TUTOR_HOJE", "TUTOR_AGORA", "TUTOR_MATERIAS_DIR"}
+DANGEROUS_VARIABLES = {
+    "BASH_ENV", "ENV", "PYTHONPATH", "PYTHONSTARTUP", "PYTHONHOME", "PYTHONINSPECT", "PYTHONUSERBASE",
+    "TUTOR_PYTHON", "LD_PRELOAD", "LD_LIBRARY_PATH", "DYLD_INSERT_LIBRARIES", "DYLD_LIBRARY_PATH",
+    "PATH", "SHELLOPTS", "BASHOPTS", "PS4", "PROMPT_COMMAND",
+}
+EXPORTERS = {"export", "declare", "typeset", "readonly", "local"}
 FILE_READERS = {"cat", "head", "tail", "less", "more", "grep", "egrep", "rg", "awk", "sed", "strings", "xxd", "od", "base64"}
+ENGINE_SCRIPT_NAMES = {"bin/tutor.sh", "./bin/tutor.sh"}
 
 REASON_VERIFIER = (
-    "O verificador resolve às cegas: só pode rodar `bash bin/tutor.sh apresentar`, `calc` e "
-    "`banco registrar-verificacao`, sem operadores de shell."
+    "O verificador resolve às cegas: só pode rodar `bash bin/tutor.sh apresentar ... --modo verificacao`, "
+    "`bash bin/tutor.sh calc ...` e `bash bin/tutor.sh banco registrar-verificacao ...`, sem operadores de shell, "
+    "variáveis, comentários ou quebras de linha."
 )
 REASON_INGESTOR = "Texto protegido e páginas renderizadas são só para o agente ingestor-de-fontes."
 REASON_EXPORT = "`banco exportar` é para o aluno rodar no próprio terminal, não para o tutor."
+REASON_REGISTER = "Só o agente verificador registra respostas às cegas (`banco registrar-verificacao`)."
+REASON_ENV = (
+    "Chamadas ao motor não podem levar variáveis de ambiente na frente (exceto TUTOR_HOJE, TUTOR_AGORA e "
+    "TUTOR_MATERIAS_DIR), e variáveis que executam código (BASH_ENV, PYTHONPATH, PATH...) não podem ser definidas."
+)
 REASON_PROTECTED = (
     "Este comando toca um arquivo protegido (gabarito, respostas do verificador, tentativas, provas ou rascunhos). "
     "Use os subcomandos do motor (`apresentar`, `corrigir`, `painel`...)."
@@ -61,18 +85,25 @@ REASON_SEARCH = (
 
 
 def _tokens(command: str) -> list[str] | None:
+    """Tokeniza como o shell: quebra de linha separa comandos e `#` no meio da palavra não é comentário."""
+    text = command.replace("\r", "\n").replace("\n", " ; ")
     try:
-        lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
+        lexer = shlex.shlex(text, posix=True, punctuation_chars=True)
         lexer.whitespace_split = True
+        lexer.commenters = ""
         return list(lexer)
     except ValueError:
         return None
 
 
+def _is_operator(token: str) -> bool:
+    return bool(token) and set(token) <= OPERATOR_CHARS
+
+
 def _segments(tokens: list[str]) -> list[list[str]]:
     segments, current = [], []
     for token in tokens:
-        if token in OPERATORS:
+        if _is_operator(token):
             if current:
                 segments.append(current)
             current = []
@@ -83,20 +114,37 @@ def _segments(tokens: list[str]) -> list[list[str]]:
     return segments
 
 
-def _strip_prefixes(segment: list[str]) -> list[str]:
-    """Remove palavras-chave do shell e atribuições de variável do início do segmento."""
-    index = 0
-    while index < len(segment) and (segment[index] in SHELL_PREFIXES or ASSIGNMENT.fullmatch(segment[index])):
+def _prefixes(segment: list[str]) -> tuple[list[str], list[str]]:
+    """Separa (variáveis atribuídas no início, resto do segmento), pulando palavras-chave do shell."""
+    index, assigned = 0, []
+    while index < len(segment):
+        token = segment[index]
+        match = ASSIGNMENT.fullmatch(token)
+        if match:
+            assigned.append(match.group(1))
+        elif token not in SHELL_PREFIXES:
+            break
         index += 1
-    return segment[index:]
+    return assigned, segment[index:]
+
+
+def _is_engine_script(token: str) -> bool:
+    normalized = token.replace("\\", "/")
+    if normalized in ENGINE_SCRIPT_NAMES:
+        return True
+    if not normalized.endswith("bin/tutor.sh"):
+        return False
+    try:
+        return Path(token).resolve() == (repo_root() / "bin" / "tutor.sh").resolve()
+    except OSError:
+        return False
 
 
 def _engine_args(segment: list[str]) -> list[str] | None:
-    """Argumentos depois de `bash bin/tutor.sh` (ou de `./bin/tutor.sh` chamado direto)."""
-    segment = _strip_prefixes(segment)
-    if len(segment) >= 2 and segment[0] in ("bash", "sh") and segment[1].replace("\\", "/").endswith("bin/tutor.sh"):
+    """Argumentos depois de `bash bin/tutor.sh` (o script real do repositório), ou None."""
+    if len(segment) >= 2 and segment[0] in ("bash", "sh") and _is_engine_script(segment[1]):
         return segment[2:]
-    if segment and segment[0].replace("\\", "/").endswith("bin/tutor.sh"):
+    if segment and _is_engine_script(segment[0]):
         return segment[1:]
     return None
 
@@ -106,15 +154,17 @@ def _is_recursive_search(segment: list[str]) -> bool:
     if program in ("rg", "ag", "ack", "ack-grep"):
         return True
     if program in ("grep", "egrep", "fgrep", "zgrep"):
-        for token in segment[1:]:
+        for index, token in enumerate(segment[1:], start=1):
             if token in ("-r", "-R", "--recursive", "--dereference-recursive") or token.startswith("--directories=rec"):
+                return True
+            if token in ("-d", "--directories") and index + 1 < len(segment) and segment[index + 1].startswith("rec"):
                 return True
             if token.startswith("-") and not token.startswith("--") and any(ch in "rR" for ch in token[1:]):
                 return True
         return False
     if program == "git" and len(segment) > 1 and segment[1] == "grep":
         return True
-    if program == "find" and any(t in ("-exec", "-execdir", "-ok") for t in segment):
+    if program == "find" and any(t in ("-exec", "-execdir", "-ok", "-okdir") for t in segment):
         return True
     if program == "xargs" and any(t.rsplit("/", 1)[-1] in FILE_READERS for t in segment[1:]):
         return True
@@ -122,12 +172,12 @@ def _is_recursive_search(segment: list[str]) -> bool:
 
 
 def _reaches_data(scope: list[str], cwd: str) -> bool:
-    cwd = cwd.replace("\\", "/")
+    cwd = cwd.replace("\\", "/").lower()
     inside = "/subjects" in cwd or "/examples" in cwd
     if not scope:
         return True  # sem caminho: diretório atual (raiz ou dentro de subjects/)
     for token in scope:
-        path = token.replace("\\", "/")
+        path = token.replace("\\", "/").lower()
         if path in (".", "./", "*", "..", "../") or path.startswith(("subjects", "./subjects", "examples", "./examples")):
             return True
         if "/subjects" in path or "/examples" in path:
@@ -147,50 +197,48 @@ def _search_scope(segment: list[str]) -> list[str]:
     return positional if uses_e else positional[1:]
 
 
-def decide(event: dict[str, Any]) -> str | None:
-    """Motivo da negação, ou None quando a chamada pode seguir o fluxo normal."""
-    tool = event.get("tool_name") or ""
-    agent = event.get("agent_type") or ""
-    data = event.get("tool_input") or {}
-    if agent == VERIFIER:
-        if tool != "Bash":
-            return REASON_VERIFIER
-        command = str(data.get("command") or "")
-        tokens = _tokens(command)
-        if tokens is None or "`" in command or "$(" in command or "${" in command:
-            return REASON_VERIFIER
-        segments = _segments(tokens)
-        if len(segments) != 1 or any(t in OPERATORS for t in tokens):
-            return REASON_VERIFIER
-        args = _engine_args(segments[0])
-        if args is None or not any(tuple(args[: len(s)]) == s for s in VERIFIER_SUBCOMMANDS):
-            return REASON_VERIFIER
-        return None
-    if tool == "Read":
-        path = str(data.get("file_path") or "").replace("\\", "/")
-        if any(m in path for m in WRITER_MARKERS) and agent not in WRITERS:
-            return REASON_PROTECTED
-        return None
+def _decide_verifier(tool: str, data: dict[str, Any]) -> str | None:
     if tool != "Bash":
-        return None
-    command = str(data.get("command") or "")
+        return REASON_VERIFIER
+    command = str(data.get("command") or "").strip()
+    return None if VERIFIER_COMMAND.fullmatch(command) else REASON_VERIFIER
+
+
+def _decide_engine(args: list[str], assigned: list[str], agent: str) -> str | None:
+    if any(name not in SAFE_VARIABLES for name in assigned):
+        return REASON_ENV
+    if args[:1] == ["renderizar"] or (args[:1] == ["texto"] and "--protegido" in args):
+        if agent != INGESTOR:
+            return REASON_INGESTOR
+    if args[:2] == ["banco", "exportar"]:
+        return REASON_EXPORT
+    if args[:2] == ["banco", "registrar-verificacao"] and agent != VERIFIER:
+        return REASON_REGISTER
+    return None
+
+
+def _decide_bash(command: str, agent: str, cwd: str) -> str | None:
     tokens = _tokens(command)
-    normalized = command.replace("\\", "/")
+    lowered = command.replace("\\", "/").lower()
     if tokens is None:
-        return REASON_PROTECTED if any(m in normalized for m in PROTECTED_MARKERS) else None
-    for segment in _segments(tokens):
-        args = _engine_args(segment)
-        if args is not None:
-            if args[:1] == ["renderizar"] or (args[:1] == ["texto"] and "--protegido" in args):
-                if agent != INGESTOR:
-                    return REASON_INGESTOR
-            if args[:2] == ["banco", "exportar"]:
-                return REASON_EXPORT
-            continue
-        segment = _strip_prefixes(segment)
+        return REASON_PROTECTED if any(m in lowered for m in PROTECTED_MARKERS) else None
+    for raw in _segments(tokens):
+        assigned, segment = _prefixes(raw)
+        if any(name in DANGEROUS_VARIABLES for name in assigned):
+            return REASON_ENV
+        if segment and segment[0] in EXPORTERS and any(
+            (match := ASSIGNMENT.fullmatch(token)) and match.group(1) in DANGEROUS_VARIABLES for token in segment[1:]
+        ):
+            return REASON_ENV
         if not segment:
             continue
-        text = " ".join(segment).replace("\\", "/")
+        args = _engine_args(segment)
+        if args is not None:
+            reason = _decide_engine(args, assigned, agent)
+            if reason:
+                return reason
+            continue
+        text = " ".join(segment).replace("\\", "/").lower()
         program = segment[0].rsplit("/", 1)[-1]
         for marker in PROTECTED_MARKERS:
             if marker not in text:
@@ -199,23 +247,44 @@ def decide(event: dict[str, Any]) -> str | None:
                 continue
             if program in ("ls", "mkdir"):
                 continue
-            if program == "mv" and len(segment) >= 3 and "fontes/provas" in segment[-1].replace("\\", "/") and not any(
-                m in " ".join(segment[1:-1]).replace("\\", "/") for m in PROTECTED_MARKERS
-            ):
+            target = segment[-1].replace("\\", "/").lower()
+            sources = " ".join(segment[1:-1]).replace("\\", "/").lower()
+            if program == "mv" and len(segment) >= 3 and "fontes/provas" in target and not any(m in sources for m in PROTECTED_MARKERS):
                 continue  # mover material PARA a área protegida é permitido
             return REASON_PROTECTED
-        if _is_recursive_search(segment) and _reaches_data(_search_scope(segment), str(event.get("cwd") or "")):
+        if _is_recursive_search(segment) and _reaches_data(_search_scope(segment), cwd):
             return REASON_SEARCH
     return None
 
 
-def cmd_guard(args: argparse.Namespace, ctx: Context) -> None:
+def decide(event: dict[str, Any]) -> str | None:
+    """Motivo da negação, ou None quando a chamada pode seguir o fluxo normal."""
+    tool = event.get("tool_name") or ""
+    agent = event.get("agent_type") or ""
+    data = event.get("tool_input") or {}
+    cwd = str(event.get("cwd") or "")
+    if agent == VERIFIER:
+        return _decide_verifier(tool, data)
+    if tool == "Read":
+        path = str(data.get("file_path") or "").replace("\\", "/").lower()
+        if any(m in path for m in WRITER_MARKERS) and agent not in WRITERS:
+            return REASON_PROTECTED
+        return None
+    if tool == "Grep":
+        path = str(data.get("path") or "")
+        return REASON_SEARCH if _reaches_data([path] if path else [], cwd) else None
+    if tool == "Bash":
+        return _decide_bash(str(data.get("command") or ""), agent, cwd)
+    return None
+
+
+def cmd_guard(args: argparse.Namespace, ctx: Context | None) -> None:
     raw = sys.stdin.read()
     try:
         event = json.loads(raw) if raw.strip() else {}
-    except json.JSONDecodeError:
+        reason = decide(event if isinstance(event, dict) else {})
+    except Exception:  # noqa: BLE001 - a guarda falha aberta e em silêncio
         return None
-    reason = decide(event if isinstance(event, dict) else {})
     if reason:
         sys.stdout.write(json.dumps({
             "hookSpecificOutput": {
@@ -229,4 +298,4 @@ def cmd_guard(args: argparse.Namespace, ctx: Context) -> None:
 
 def add_commands(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("guarda", help="política do hook PreToolUse (lê o evento JSON na entrada padrão)")
-    p.set_defaults(handler=cmd_guard, always_zero=True)
+    p.set_defaults(handler=cmd_guard, always_zero=True, needs_context=False)

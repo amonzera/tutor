@@ -70,6 +70,22 @@ class ImportTest(TempWorkspaceCase):
         self.assertEqual(result["importadas"], [qid(1)])
         self.assertEqual(load_key(self.paths)[qid(1)]["resposta"], "A")
 
+    def test_unknown_fields_are_refused(self) -> None:
+        item = mc_draft_item("bayes", "A", 97, explicacao="a resposta é A porque...")
+        with self.assertRaises(TutorError) as caught:
+            import_draft(self.paths, self._draft([item]), self.now)
+        self.assertIn("campos não permitidos", " ".join(caught.exception.extra["problemas"]))
+
+    def test_replace_and_remove_reset_verification(self) -> None:
+        record_verification(self.paths, qid(1), answer_of(1), 5, False, None, None, self.now)
+        self.assertIn(qid(1), compare_verification(self.paths, self.now)["verificada"])
+        import_draft(self.paths, self._draft([mc_draft_item("bayes", "A", 98, id=qid(1))]), self.now, replace=True)
+        self.assertIn(qid(1), compare_verification(self.paths, self.now)["pendente"], "questão trocada não herda verificação")
+        code, out = self.run_cli("banco", "remover", "--materia", "prob", "--questao", qid(8))
+        self.assertEqual(code, 0, out)
+        result = import_draft(self.paths, self._draft([mc_draft_item("bayes", "B", 99)]), self.now)
+        self.assertEqual(result["importadas"], [qid(9)], "id removido não é reaproveitado")
+
     def test_draft_must_live_in_drafts_folder(self) -> None:
         outside = self.paths.root / "fora.json"
         write_json(outside, {"schema_version": 1, "questoes": [mc_draft_item("bayes", "A", 96)]})
@@ -161,6 +177,12 @@ class VerificationTest(TempWorkspaceCase):
         self.assertIn(qid(9, "aberta"), compare_verification(paths, self.now)["divergente"])
         with self.assertRaises(TutorError):
             open_review(paths, qid(1, "aberta"))
+        from tutor.core import mark_step
+
+        mark_step(paths, "banco", True)
+        with self.assertRaises(TutorError) as caught:
+            open_review(paths, qid(9, "aberta"))
+        self.assertEqual(caught.exception.code, "fora_da_preparacao", "fora da preparação a rubrica não sai")
 
     def test_latest_round_wins(self) -> None:
         record_verification(self.paths, qid(1), wrong_of(1), 4, False, None, None, self.now)
@@ -174,6 +196,15 @@ class VerificationTest(TempWorkspaceCase):
             record_verification(self.paths, qid(1), "A", 9, False, None, None, self.now)
         with self.assertRaises(TutorError):
             record_verification(self.paths, qid(1), "Z", 4, False, None, None, self.now)
+
+    def test_numeric_verifier_answer_is_validated(self) -> None:
+        numeric = {"tipo": "numerica", "enunciado": "Quanto vale 1/2 + 1/4?", "conceitos": ["prob-classica"],
+                   "gabarito": {"resposta": {"valor": 0.75}, "conceito_decisivo": "soma", "solucao": "3/4"}}
+        paths = build_subject(self.subjects, self.now, slug="num", verify=False, extra_questions=[numeric])
+        with self.assertRaises(TutorError):
+            record_verification(paths, qid(9, "num"), "três quartos", 4, False, None, None, self.now)
+        record_verification(paths, qid(9, "num"), "0,75", 4, False, None, None, self.now)
+        self.assertIn(qid(9, "num"), compare_verification(paths, self.now)["verificada"])
 
 
 class BankCommandsTest(TempWorkspaceCase):

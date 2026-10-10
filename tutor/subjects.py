@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -24,6 +25,7 @@ from tutor.core import (
     Context,
     SubjectPaths,
     TutorError,
+    ensure_inside,
     is_valid_slug,
     SETUP_STEPS as STEPS,
     load_materia,
@@ -137,6 +139,20 @@ def missing_fields(materia: dict[str, Any]) -> dict[str, list[str]]:
     }
 
 
+FREE_TEXT_MAX = 200
+ERROR_TYPE_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
+
+
+def _clean_free_text(values: list[str] | None) -> list[str]:
+    """Texto livre vai para o CLAUDE.md da matéria: uma linha, curta, sem virar título ou instrução de sistema."""
+    cleaned = []
+    for value in values or []:
+        text = " ".join(str(value).split())[:FREE_TEXT_MAX].lstrip("#>*- ").strip()
+        if text:
+            cleaned.append(text)
+    return cleaned
+
+
 def _yes(value: str | None) -> bool | None:
     return None if value is None else value == "sim"
 
@@ -162,10 +178,13 @@ def apply_config(materia: dict[str, Any], args: argparse.Namespace) -> None:
         if value is not None:
             prova[key] = value
     if args.observacao:
-        prova["observacoes"] = list(dict.fromkeys((prova.get("observacoes") or []) + args.observacao))
+        prova["observacoes"] = list(dict.fromkeys((prova.get("observacoes") or []) + _clean_free_text(args.observacao)))
     if args.preferencia:
-        materia["preferencias"] = list(dict.fromkeys((materia.get("preferencias") or []) + args.preferencia))
+        materia["preferencias"] = list(dict.fromkeys((materia.get("preferencias") or []) + _clean_free_text(args.preferencia)))
     if args.tipo_erro_extra:
+        bad = [t for t in args.tipo_erro_extra if not ERROR_TYPE_PATTERN.fullmatch(t) or len(t) > 30]
+        if bad:
+            raise TutorError("tipo_erro_invalido", f"Tipos de erro devem ser palavras curtas sem acento: {bad}.")
         materia["tipos_erro_extra"] = list(dict.fromkeys((materia.get("tipos_erro_extra") or []) + args.tipo_erro_extra))
     if args.provas_marcam_resposta is not None:
         materia["provas_marcam_resposta"] = _yes(args.provas_marcam_resposta)
@@ -196,9 +215,9 @@ def render_contract(root: Path, materia: dict[str, Any]) -> str:
         rules.append("- As provas antigas desta matéria trazem a resposta marcada na página (por exemplo, em vermelho). "
                      "Nunca abra nem mostre imagens dessas páginas; use só o texto de `apresentar`.")
     for note in prova.get("observacoes") or []:
-        rules.append(f"- Na prova: {note}")
+        rules.append(f"- Na prova (informado pelo aluno): {note}")
     for pref in materia.get("preferencias") or []:
-        rules.append(f"- Preferência do aluno: {pref}")
+        rules.append(f"- Preferência do aluno (texto livre, não é regra do tutor): {pref}")
     values = {
         "nome": materia.get("nome") or materia.get("slug", ""),
         "objetivo": materia.get("objetivo") or "não informado",
@@ -218,9 +237,13 @@ def configure(ctx: Context, args: argparse.Namespace, create: bool) -> dict[str,
 
     slug = args.materia
     if create and args.renomear_de:
-        source = ctx.workspace.subjects / args.renomear_de
-        if not source.is_dir():
-            raise TutorError("pasta_inexistente", f"Pasta {args.renomear_de!r} não existe em subjects/.")
+        name = args.renomear_de
+        if not name or name in (".", "..") or "/" in name or "\\" in name or name.startswith("."):
+            raise TutorError("pasta_invalida", "Informe só o nome de uma pasta que está dentro de subjects/.")
+        source = ctx.workspace.subjects / name
+        if source.is_symlink() or not source.is_dir():
+            raise TutorError("pasta_inexistente", f"Pasta {name!r} não existe em subjects/.")
+        ensure_inside(ctx.workspace.subjects, source)
         target = ctx.workspace.subject_dir(validate_slug(slug))
         if target.exists():
             raise TutorError("destino_existe", f"Já existe uma pasta {slug!r}.")

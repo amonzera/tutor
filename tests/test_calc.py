@@ -31,7 +31,8 @@ class EvaluateTest(unittest.TestCase):
                 evaluate(expression)
 
     def test_limits(self) -> None:
-        for expression in ["9**9**9", "factorial(5000)", "comb(100000, 3)", "1/0", "x" * 400, ""]:
+        for expression in ["9**9**9", "factorial(5000)", "comb(100000, 3)", "1/0", "x" * 400, "", "(-8)**(1/3.0)",
+                           "10.0**400", "exp(1000)"]:
             with self.subTest(expression=expression[:20]), self.assertRaises(TutorError):
                 evaluate(expression)
 

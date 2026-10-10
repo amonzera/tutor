@@ -119,6 +119,17 @@ class CreateAndConfigureTest(TempWorkspaceCase):
         self.assertEqual(code, 0, out)
         self.assertTrue((self.subjects / "algebra-linear" / "materia.json").is_file())
 
+    def test_rename_only_inside_subjects(self) -> None:
+        outside = self.subjects.parent / "fora"
+        outside.mkdir()
+        (self.subjects / "valida").mkdir()
+        for bad in ("../fora", str(outside), "..", ".oculta", "a/b", "a\\b"):
+            with self.subTest(bad=bad):
+                code, out = self.run_cli("iniciar", "--materia", "nova", "--renomear-de", bad)
+                self.assertEqual(code, 1)
+                self.assertIn(out["erro"], ("pasta_invalida", "pasta_inexistente"))
+        self.assertTrue(outside.is_dir(), "nada fora de subjects/ pode ser movido")
+
     def test_empty_sources_keep_inventory_pending(self) -> None:
         self.make_subject("vazia", sources=0)
         _, out = self.run_cli("iniciar", "--materia", "vazia", "--nome", "Vazia")
