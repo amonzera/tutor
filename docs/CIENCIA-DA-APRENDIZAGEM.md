@@ -202,6 +202,7 @@ Cada seção traz: o que a pesquisa diz, a força da evidência, o que o tutor f
 **No tutor.**
 
 - O aluno escolhe a matéria, o tempo diário e a data da prova (autonomia); o painel mostra o progresso por conceito (competência).
+- Cada `/estudar` começa perguntando o tempo disponível e a energia (1 a 5), e a sessão encolhe quando a energia está baixa.
 - Cada sessão termina com o próximo passo concreto escrito em `estado/proximo-passo.md`, que abre a sessão seguinte.
 - Dias perdidos não zeram nada: `/plano` refaz o calendário.
 
@@ -241,7 +242,7 @@ O FASTER (Forget, Act, State, Teach, Enter, Review), atribuído a Jim Kwik no li
 |---|---|---|---|
 | F (Forget) | deixar de lado o que se acha que sabe | o diagnóstico mede o que o aluno sabe, em vez de presumir | limitada (pré-teste) |
 | A (Act) | aprender fazendo, não assistindo | tenta primeiro, geração, recuperação | forte (prática de recuperação) |
-| S (State) | estado do aluno | não implementado: o tutor não mede nem altera o estado emocional; só registra a confiança | não se aplica |
+| S (State) | estado do aluno | `/estudar` pergunta o tempo disponível e a energia (1 a 5) e faz uma sessão mais leve quando a energia está baixa; o tutor não tenta alterar o estado | heurística |
 | T (Teach) | aprender como quem vai ensinar | ensinar de volta, `/ensinar` | moderada a limitada |
 | E (Enter) | pôr o estudo na agenda | plano reverso, próximo passo concreto | limitada (intenções de implementação) |
 | R (Review) | revisar | revisões espaçadas por conceito | forte (prática espaçada) |
