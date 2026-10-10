@@ -12,6 +12,9 @@ início) com duas adaptações para prova marcada, ambas heurísticas declaradas
      espaçamento ótimo depende do horizonte de retenção; os números são escolha nossa,
      calibrada por simulação (4 a 9 revisões para provas de 1 semana a 2 meses);
   2. nenhuma revisão cai depois da véspera da prova.
+Outras diferenças em relação à descrição original (Wozniak, 1990): quatro notas em vez
+de seis; o fator também é atualizado nos lapsos; o intervalo é arredondado para o
+inteiro mais próximo; conceitos com nota abaixo de 4 não voltam no mesmo dia.
 O limite diário e o orçamento entre matérias são aplicados na leitura (triagem),
 sem reagendar nada.
 """

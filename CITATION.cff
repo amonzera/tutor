@@ -1,0 +1,16 @@
+cff-version: 1.2.0
+message: "Se você usar este software, cite-o assim."
+title: "tutor: tutor de estudo guiado com IA para o Claude Code"
+type: software
+authors:
+  - name: "Amon Pires"
+repository-code: "https://github.com/amonzera/tutor"
+license: MIT
+version: 0.1.0
+date-released: "2026-10-09"
+keywords:
+  - educação
+  - ciência da aprendizagem
+  - prática de recuperação
+  - repetição espaçada
+  - Claude Code
