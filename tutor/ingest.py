@@ -42,9 +42,12 @@ MAX_FILE_BYTES = 100 * 1024 * 1024
 LINES_PER_CHUNK = 60
 MAX_TEXT_CHARS = 30_000
 ANSWER_SECTION = re.compile(
-    r"^\s{0,3}#{0,6}\s*(gabarito|respostas?|resolu[cç](?:ão|ao|ões|oes)|solu[cç](?:ão|ao|ões|oes)|answer key)\b",
-    re.IGNORECASE | re.MULTILINE,
+    r"[ \t]{0,3}#{0,6}[ \t]*(gabarito|respostas?|resolu[cç](?:ão|ao|ões|oes)|solu[cç](?:ão|ao|ões|oes)|answer key)\b",
+    re.IGNORECASE,
 )
+MAX_LINE_SCAN = 200
+MAX_PAGE_SCAN = 200_000
+MIN_DPI, MAX_DPI = 50, 300
 INJECTION_PATTERNS = [
     re.compile(p, re.IGNORECASE)
     for p in (
@@ -68,13 +71,30 @@ def _relative(paths: SubjectPaths, path: Path) -> str:
     return path.relative_to(paths.fontes).as_posix()
 
 
-def _is_protected(rel: str) -> bool:
-    return rel.split("/", 1)[0].lower() == "provas"
+def _is_protected(paths: SubjectPaths, path: Path) -> bool:
+    """Decide pelo caminho real (um link em fontes/ apontando para provas/ também é protegido) e sem
+    diferenciar maiúsculas (provas/, Provas/)."""
+    try:
+        real = path.resolve().relative_to(paths.fontes.resolve()).as_posix()
+    except ValueError:
+        real = _relative(paths, path)
+    return real.split("/", 1)[0].lower() == "provas" or _relative(paths, path).split("/", 1)[0].lower() == "provas"
 
 
 def _output_name(rel: str) -> str:
+    """Nome de saída único: slug legível + 8 caracteres do hash do caminho (evita colisões)."""
     stem, dot, ext = rel.rpartition(".")
-    return f"{slugify(stem or rel)}-{ext.lower()}" if dot else slugify(rel)
+    readable = f"{slugify(stem or rel)}-{ext.lower()}" if dot else slugify(rel)
+    return f"{readable}-{hashlib.sha256(rel.encode('utf-8')).hexdigest()[:8]}"
+
+
+def _has_answer_section(text: str) -> bool:
+    return any(ANSWER_SECTION.match(line[:MAX_LINE_SCAN]) for line in text.splitlines())
+
+
+def _output_path(paths: SubjectPaths, entry: dict[str, Any]) -> Path:
+    """Caminho de saída vindo do índice, sempre dentro de ingestao/ (o índice não é confiável)."""
+    return ensure_inside(paths.ingestao, paths.root / str(entry.get("saida", "")))
 
 
 def _walk(paths: SubjectPaths) -> tuple[list[Path], list[dict[str, Any]]]:
@@ -96,6 +116,8 @@ def _walk(paths: SubjectPaths) -> tuple[list[Path], list[dict[str, Any]]]:
             except TutorError:
                 problems.append({"arquivo": "/".join(rel_parts), "problema": "link_para_fora_da_materia"})
                 continue
+        if path.is_dir() and len(rel_parts) == 1 and rel_parts[0].lower() == "provas" and rel_parts[0] != "provas":
+            problems.append({"arquivo": rel_parts[0], "problema": "renomeie_para_provas_em_minusculas"})
         if path.is_file():
             files.append(path)
     return files, problems
@@ -108,14 +130,14 @@ def inventory(paths: SubjectPaths) -> dict[str, Any]:
         rel = _relative(paths, path)
         suffix = path.suffix.lower()
         size = path.stat().st_size
-        row: dict[str, Any] = {"arquivo": rel, "tamanho_kb": round(size / 1024, 1), "protegido": _is_protected(rel)}
+        row: dict[str, Any] = {"arquivo": rel, "tamanho_kb": round(size / 1024, 1), "protegido": _is_protected(paths, path)}
         if suffix in KINDS:
             row["tipo"] = KINDS[suffix]
             if size > MAX_FILE_BYTES:
                 row["aviso"] = "arquivo muito grande (mais de 100 MB): divida antes de ingerir"
             elif row["tipo"] != "pdf" and not row["protegido"]:
                 text = path.read_text(encoding="utf-8", errors="replace")
-                if ANSWER_SECTION.search(text):
+                if _has_answer_section(text):
                     row["aviso"] = "parece conter gabarito ou resolução: mova para fontes/provas/"
             rows.append(row)
         else:
@@ -171,8 +193,9 @@ def _text_sections(text: str, markdown: bool) -> list[str]:
 def _alerts(pages: list[str]) -> list[dict[str, Any]]:
     found = []
     for number, page in enumerate(pages, start=1):
+        flat = " ".join(page[:MAX_PAGE_SCAN].split())  # espaços colapsados: sem retrocesso quadrático
         for pattern in INJECTION_PATTERNS:
-            match = pattern.search(page)
+            match = pattern.search(flat)
             if match:
                 found.append({"pagina": number, "trecho": match.group(0)[:80]})
                 break
@@ -190,7 +213,7 @@ def ingest(paths: SubjectPaths, now: datetime, force: bool = False) -> dict[str,
         if kind is None or path.stat().st_size > MAX_FILE_BYTES:
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        protected = _is_protected(rel)
+        protected = _is_protected(paths, path)
         name = _output_name(rel)
         output = (paths.protegido / f"{name}.json") if protected else (paths.ingestao / name)
         old = previous.get(rel)
@@ -225,7 +248,10 @@ def ingest(paths: SubjectPaths, now: datetime, force: bool = False) -> dict[str,
     current = {e["arquivo"] for e in entries}
     for rel, old in previous.items():
         if rel not in current and old.get("saida"):
-            stale = paths.root / old["saida"]
+            try:
+                stale = _output_path(paths, old)
+            except TutorError:
+                continue
             if stale.is_dir():
                 shutil.rmtree(stale, ignore_errors=True)
             elif stale.is_file():
@@ -257,14 +283,14 @@ def _page_range(raw: str | None, total: int) -> list[int]:
     numbers: list[int] = []
     for part in raw.split(","):
         part = part.strip()
-        if "-" in part:
-            lo, hi = part.split("-", 1)
-            numbers += list(range(int(lo), int(hi) + 1))
-        elif part:
-            numbers.append(int(part))
-    bad = [n for n in numbers if not 1 <= n <= total]
-    if bad:
-        raise TutorError("pagina_inexistente", f"Páginas fora do intervalo 1-{total}: {bad}.")
+        try:
+            lo, _, hi = part.partition("-")
+            first, last = int(lo), int(hi or lo)
+        except ValueError as exc:
+            raise TutorError("paginas_invalidas", f"Intervalo de páginas inválido: {part!r} (use 3, 2-4 ou 1,5).") from exc
+        if not 1 <= first <= last <= total:
+            raise TutorError("pagina_inexistente", f"Páginas fora do intervalo 1-{total}: {part}.")
+        numbers += range(first, last + 1)
     return numbers
 
 
@@ -278,9 +304,9 @@ def read_text(paths: SubjectPaths, rel: str, pages: str | None, protected: bool)
             )
         raise TutorError("fonte_nao_protegida", f"{rel} não está na área protegida; rode sem --protegido.")
     if protected:
-        content = read_protected(paths.root / entry["saida"], {"paginas": []})["paginas"]
+        content = read_protected(_output_path(paths, entry), {"paginas": []})["paginas"]
     else:
-        folder = paths.root / entry["saida"]
+        folder = _output_path(paths, entry)
         content = [(folder / f"pagina-{n:04d}.txt").read_text(encoding="utf-8") for n in range(1, entry["paginas"] + 1)]
     selected, size, truncated = [], 0, False
     for number in _page_range(pages, len(content)):
@@ -307,7 +333,7 @@ def search(paths: SubjectPaths, term: str, limit: int) -> dict[str, Any]:
     for entry in index.get("arquivos", []):
         if entry.get("protegido"):
             continue
-        folder = paths.root / entry["saida"]
+        folder = _output_path(paths, entry)
         for number in range(1, entry["paginas"] + 1):
             page = folder / f"pagina-{number:04d}.txt"
             if not page.is_file():
@@ -325,6 +351,8 @@ def search(paths: SubjectPaths, term: str, limit: int) -> dict[str, Any]:
 
 
 def render_page(paths: SubjectPaths, rel: str, page: int, dpi: int) -> dict[str, Any]:
+    if not MIN_DPI <= dpi <= MAX_DPI or page < 1:
+        raise TutorError("renderizacao_invalida", f"Use página >= 1 e resolução entre {MIN_DPI} e {MAX_DPI} dpi.")
     tool = shutil.which("pdftoppm")
     if tool is None:
         raise TutorError("sem_pdftoppm", "pdftoppm (poppler) não está instalado.")

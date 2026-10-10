@@ -299,6 +299,8 @@ def _atomic_write(path: Path, text: str) -> None:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
+            fh.flush()
+            os.fsync(fh.fileno())
         os.replace(tmp, path)
     except BaseException:
         with contextlib.suppress(FileNotFoundError):
@@ -316,30 +318,35 @@ def write_text(path: Path, text: str) -> None:
 
 
 def read_jsonl(path: Path) -> list[dict[str, Any]]:
-    """Lê um JSONL. Tolera só a última linha truncada (queda no meio de uma escrita)."""
+    """Lê um JSONL, pulando linhas corrompidas (por exemplo, truncadas por uma queda no meio da escrita)."""
     try:
-        with open(path, encoding="utf-8") as fh:
+        with open(path, encoding="utf-8", errors="replace") as fh:
             lines = fh.read().split("\n")
     except FileNotFoundError:
         return []
     records: list[dict[str, Any]] = []
-    numbered = [(n, line.strip()) for n, line in enumerate(lines, start=1) if line.strip()]
-    for index, (number, line) in enumerate(numbered):
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
         try:
-            records.append(json.loads(line))
-        except json.JSONDecodeError as exc:
-            if index == len(numbered) - 1:
-                break
-            raise TutorError(
-                "jsonl_invalido", f"{path.name}: linha {number} inválida ({exc.msg}).", arquivo=str(path)
-            ) from exc
+            record = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(record, dict):
+            records.append(record)
     return records
 
 
 def append_jsonl(path: Path, record: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    needs_newline = False
+    if path.exists() and path.stat().st_size > 0:
+        with open(path, "rb") as fh:
+            fh.seek(-1, os.SEEK_END)
+            needs_newline = fh.read(1) != b"\n"  # última linha truncada: não colar o registro novo nela
     with open(path, "a", encoding="utf-8", newline="\n") as fh:
-        fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+        fh.write(("\n" if needs_newline else "") + json.dumps(record, ensure_ascii=False) + "\n")
         fh.flush()
         os.fsync(fh.fileno())
 

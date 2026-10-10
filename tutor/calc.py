@@ -109,6 +109,10 @@ BINARY: dict[type, Callable[[Any, Any], Any]] = {
 
 
 def _check_size(value: Number) -> Number:
+    if isinstance(value, complex):
+        raise TutorError("calc_dominio", "O resultado não é um número real.")
+    if isinstance(value, float) and (value != value or value in (float("inf"), float("-inf"))):
+        raise TutorError("calc_dominio", "O resultado não é um número finito.")
     if isinstance(value, Fraction):
         if max(len(str(abs(value.numerator))), len(str(value.denominator))) > MAX_INT_DIGITS:
             return float(value)
@@ -127,7 +131,10 @@ def _power(base: Number, exponent: Number) -> Number:
             if base == 0 and k < 0:
                 raise TutorError("calc_dominio", "Divisão por zero.")
             return Fraction(base) ** k
-    return float(base) ** float(exponent)
+    try:
+        return float(base) ** float(exponent)
+    except OverflowError as exc:
+        raise TutorError("calc_limite", "Resultado grande demais.") from exc
 
 
 def _eval(node: ast.AST) -> Number:
@@ -151,7 +158,10 @@ def _eval(node: ast.AST) -> Number:
             raise TutorError("calc_dominio", "Divisão por zero.")
         if isinstance(node.op, ast.Div) and isinstance(left, (int, Fraction)) and isinstance(right, (int, Fraction)):
             return _check_size(Fraction(left) / Fraction(right))
-        return _check_size(op(left, right))
+        try:
+            return _check_size(op(left, right))
+        except OverflowError as exc:
+            raise TutorError("calc_limite", "Resultado grande demais.") from exc
     if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in FUNCTIONS:
         if node.keywords:
             raise TutorError("calc_invalida", "Use só argumentos posicionais.")

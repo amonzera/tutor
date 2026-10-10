@@ -26,6 +26,7 @@ from tutor.core import (
     check_schema,
     ensure_inside,
     load_materia,
+    mark_step,
     read_json,
     read_protected,
     resolve_subject,
@@ -64,11 +65,13 @@ def load_bank(paths: SubjectPaths, required: bool = True) -> dict[str, dict[str,
     return {q["id"]: q for q in data.get("questoes", []) if isinstance(q, dict) and "id" in q}
 
 
-def save_bank(paths: SubjectPaths, questions: dict[str, dict[str, Any]]) -> None:
-    write_json(
-        paths.questoes,
-        {"schema_version": SCHEMA_VERSION, "materia": paths.slug, "questoes": list(questions.values())},
-    )
+def save_bank(paths: SubjectPaths, questions: dict[str, dict[str, Any]], removed: list[str] | None = None) -> None:
+    previous = read_json(paths.questoes) or {}
+    removed_ids = sorted(set(previous.get("ids_removidos", [])) | set(removed or []))
+    data: dict[str, Any] = {"schema_version": SCHEMA_VERSION, "materia": paths.slug, "questoes": list(questions.values())}
+    if removed_ids:
+        data["ids_removidos"] = removed_ids
+    write_json(paths.questoes, data)
 
 
 def load_key(paths: SubjectPaths) -> dict[str, dict[str, Any]]:
@@ -290,6 +293,26 @@ def _id_prefix(slug: str) -> str:
     return prefix or "q"
 
 
+QUESTION_FIELDS = {
+    "id", "tipo", "enunciado", "alternativas", "conceitos", "tema", "dificuldade", "unidade", "figura",
+    "contexto_compartilhado", "origem",
+}
+
+
+def _removed_ids(paths: SubjectPaths) -> list[str]:
+    data = read_json(paths.questoes) or {}
+    return list(data.get("ids_removidos", []))
+
+
+def _drop_verification(paths: SubjectPaths, qids: set[str]) -> None:
+    """Questão trocada ou removida perde as rodadas antigas do verificador (não herda 'verificada')."""
+    if not qids or not paths.verificacao.exists():
+        return
+    data = read_protected(paths.verificacao, {"rodadas": []})
+    data["rodadas"] = [r for r in data.get("rodadas", []) if r.get("id") not in qids]
+    write_protected(paths.verificacao, paths.slug, data)
+
+
 def _next_id(prefix: str, taken: set[str]) -> str:
     numbers = [int(m.group(1)) for qid in taken if (m := re.fullmatch(rf"{re.escape(prefix)}-(\d+)", qid))]
     number = max(numbers, default=0) + 1
@@ -312,7 +335,7 @@ def import_draft(paths: SubjectPaths, draft: Path, now: datetime, replace: bool 
     if not isinstance(incoming, list) or not incoming:
         raise TutorError("rascunho_vazio", "O rascunho não tem questões.")
     prefix = _id_prefix(paths.slug)
-    taken = set(questions) | set(key)
+    taken = set(questions) | set(key) | set(_removed_ids(paths))
     problems: list[str] = []
     staged: list[tuple[dict[str, Any], dict[str, Any]]] = []
     for index, raw in enumerate(incoming, start=1):
@@ -321,6 +344,11 @@ def import_draft(paths: SubjectPaths, draft: Path, now: datetime, replace: bool 
             continue
         item = dict(raw)
         entry = item.pop("gabarito", None)
+        unknown = sorted(set(item) - QUESTION_FIELDS)
+        if unknown:
+            problems.append(
+                f"questão {index}: campos não permitidos no banco ({', '.join(unknown)}); explicações e soluções vão no gabarito"
+            )
         qid = item.get("id")
         if qid and qid in questions and not replace:
             problems.append(f"questão {index}: id {qid!r} já existe (use --substituir para trocar)")
@@ -349,11 +377,14 @@ def import_draft(paths: SubjectPaths, draft: Path, now: datetime, replace: bool 
             "Corrija o rascunho (sem copiar respostas para o banco) e importe de novo.",
             problemas=problems,
         )
+    replaced = {item["id"] for item, _ in staged if item["id"] in questions}
     for item, entry in staged:
         questions[item["id"]] = item
         key[item["id"]] = entry
     save_bank(paths, questions)
     save_key(paths, key)
+    _drop_verification(paths, replaced)
+    mark_step(paths, "banco", False)  # questões novas precisam de verificação antes de a etapa fechar
     draft.unlink()
     if paths.figuras_temp.is_dir():
         shutil.rmtree(paths.figuras_temp, ignore_errors=True)
@@ -375,8 +406,11 @@ def record_verification(
     if alert is not None and alert not in VERIFIER_ALERTS:
         raise TutorError("alerta_invalido", f"Alerta deve ser um de {', '.join(VERIFIER_ALERTS)}.")
     question = questions[qid]
-    if question.get("tipo", "multipla-escolha") == "multipla-escolha" and alert not in ("ambigua", "sem-resposta"):
+    kind = question.get("tipo", "multipla-escolha")
+    if kind == "multipla-escolha" and alert not in ("ambigua", "sem-resposta"):
         answer = normalize_letter(answer, sorted(question.get("alternativas") or {}))
+    elif kind == "numerica" and alert is None:
+        parse_number(answer)
     data = read_protected(paths.verificacao, {"rodadas": []})
     data.setdefault("rodadas", []).append(
         {
@@ -413,8 +447,13 @@ def compare_verification(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
         elif record.get("alerta"):
             state, note = "aviso", f"verificador marcou: {record['alerta']}"
         else:
-            verdict = check_answer(question, entry, str(record["resposta"]))
-            if verdict["correta"] is None:
+            try:
+                verdict = check_answer(question, entry, str(record["resposta"]))
+            except TutorError:
+                verdict = {"correta": False, "ilegivel": True}
+            if verdict.get("ilegivel"):
+                state, note = "aviso", "resposta do verificador ilegível; verifique de novo"
+            elif verdict["correta"] is None:
                 state, note = "pendente", "questão aberta: conferir com `banco conferir-aberta` e `banco confirmar`"
             elif verdict["correta"]:
                 state = "verificada" if int(record["confianca"]) >= 3 else "aviso"
@@ -447,8 +486,20 @@ def compare_verification(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
     return {state: ids for state, ids in summary.items()}
 
 
+def _require_setup_phase(paths: SubjectPaths) -> None:
+    """Conferir abertas revela a rubrica: só durante a preparação do banco, nunca numa sessão de estudo."""
+    materia = read_json(paths.materia) or {}
+    if (materia.get("etapas") or {}).get("banco") == "ok":
+        raise TutorError(
+            "fora_da_preparacao",
+            "A conferência de questões abertas só acontece enquanto a etapa 'banco' está pendente.",
+            "Isso faz parte do /nova-materia (ou da criação de questões novas), não da sessão de estudo.",
+        )
+
+
 def open_review(paths: SubjectPaths, qid: str) -> dict[str, Any]:
     """Para conferir uma questão aberta: rubrica, solução e a resposta independente do verificador."""
+    _require_setup_phase(paths)
     question = load_bank(paths).get(qid)
     if question is None or question.get("tipo") != "aberta":
         raise TutorError("nao_e_aberta", f"{qid!r} não é uma questão aberta do banco.")
@@ -548,9 +599,13 @@ def cmd_remove(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
     key = load_key(paths)
     del questions[args.questao]
     key.pop(args.questao, None)
-    save_bank(paths, questions)
+    save_bank(paths, questions, removed=[args.questao])
     save_key(paths, key)
-    return {"status": "ok", "removida": args.questao, "llm_directive": "Questão removida do banco e do gabarito."}
+    _drop_verification(paths, {args.questao})
+    return {
+        "status": "ok", "removida": args.questao,
+        "llm_directive": "Questão removida do banco e do gabarito. O id não será reaproveitado.",
+    }
 
 
 def cmd_export(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:

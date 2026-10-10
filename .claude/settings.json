@@ -9,6 +9,7 @@
       "Edit(/subjects/*/banco/rascunhos/**)"
     ],
     "deny": [
+      "Bash(bash bin/tutor.sh banco exportar *)",
       "Read(**/banco/gabarito.json)",
       "Read(**/banco/verificacao.json)",
       "Read(**/estado/tentativas.jsonl)",
@@ -39,7 +40,7 @@
     ],
     "PreToolUse": [
       {
-        "matcher": "Bash|Read",
+        "matcher": "Bash|Read|Grep|Glob",
         "hooks": [
           {
             "type": "command",

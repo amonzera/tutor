@@ -24,7 +24,12 @@ EXIT_INTERNAL = 70
 
 
 class _Parser(argparse.ArgumentParser):
-    """Erros de uso também saem como JSON, em português."""
+    """Erros de uso também saem como JSON, em português. Sem abreviação de flags: `--prot` não vira
+    `--protegido`, o que importa para a guarda, que compara flags pelo nome exato."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        kwargs.setdefault("allow_abbrev", False)
+        super().__init__(*args, **kwargs)
 
     def error(self, message: str) -> None:  # type: ignore[override]
         raise TutorError(
@@ -71,6 +76,9 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return EXIT_USAGE
     always_zero = bool(getattr(args, "always_zero", False))
+    if not getattr(args, "needs_context", True):
+        handler(args, None)  # a guarda: nunca depende de relógio nem de pastas
+        return EXIT_OK
     try:
         ctx = Context(workspace=Workspace.from_env(), clock=clock_from_env())
         payload = handler(args, ctx)

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from tutor.bank import compare_verification, import_draft, record_verification
-from tutor.core import SCHEMA_VERSION, SubjectPaths, write_json
+from tutor.core import SCHEMA_VERSION, SubjectPaths, mark_step, write_json
 
 CONCEPTS = [
     {"id": "espaco-amostral", "nome": "Espaço amostral", "tema": "fundamentos", "peso": 2, "prerequisitos": []},
@@ -71,6 +71,8 @@ def build_subject(subjects_dir: Path, now: datetime, slug: str = "prob", verify:
         for index, (_, answer) in enumerate(MC_QUESTIONS, start=1):
             record_verification(paths, f"{_prefix(slug)}-{index:03d}", answer, 4, False, None, None, now)
         compare_verification(paths, now)
+        if not extra_questions:
+            mark_step(paths, "banco", True)  # como o `validar` faria numa matéria pronta
     return paths
 
 

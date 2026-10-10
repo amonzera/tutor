@@ -67,23 +67,22 @@ if wsl_target "$root" && command -v wsl.exe >/dev/null 2>&1; then
   WSLENV="${WSLENV:+$WSLENV:}TUTOR_HOJE/u:TUTOR_AGORA/u:TUTOR_SAIDA_ERRO/u"
   export WSLENV
   MSYS_NO_PATHCONV=1 exec wsl.exe -d "$WSL_DISTRO" --cd "$WSL_PATH" -e \
-    env PYTHONUTF8=1 PYTHONDONTWRITEBYTECODE=1 python3 -m tutor ${1+"$@"}
+    python3 -E -X utf8 -B -m tutor ${1+"$@"}
 fi
 
 cd "$root" || exit 1
-PYTHONUTF8=1
-PYTHONDONTWRITEBYTECODE=1
-export PYTHONUTF8 PYTHONDONTWRITEBYTECODE
+# -E ignora PYTHONPATH e afins (nada de código injetado por variável de ambiente);
+# -X utf8 e -B fazem o papel de PYTHONUTF8 e PYTHONDONTWRITEBYTECODE, que o -E ignoraria.
 
 if [ -n "${TUTOR_PYTHON:-}" ] && python_ok "$TUTOR_PYTHON"; then
-  exec "$TUTOR_PYTHON" -m tutor ${1+"$@"}
+  exec "$TUTOR_PYTHON" -E -X utf8 -B -m tutor ${1+"$@"}
 fi
 for candidate in python3 python; do
   if command -v "$candidate" >/dev/null 2>&1 && python_ok "$candidate"; then
-    exec "$candidate" -m tutor ${1+"$@"}
+    exec "$candidate" -E -X utf8 -B -m tutor ${1+"$@"}
   fi
 done
 if command -v py >/dev/null 2>&1 && python_ok py -3; then
-  exec py -3 -m tutor ${1+"$@"}
+  exec py -3 -E -X utf8 -B -m tutor ${1+"$@"}
 fi
 fail_no_python

@@ -32,17 +32,22 @@ class IngestTest(TempWorkspaceCase):
         (fontes / "provas").mkdir()
         (fontes / "provas" / "lista.md").write_text("# Lista\n1) P(par)?\n## Gabarito\n1) 1/2\n", encoding="utf-8")
 
+    def out(self, prefix: str):
+        matches = list(self.paths.ingestao.glob(f"{prefix}-*"))
+        self.assertEqual(len(matches), 1, matches)
+        return matches[0]
+
     def test_sections_and_protected_area(self) -> None:
         result = ingest(self.paths, self.now)
         self.assertEqual(sorted(result["processados"]), ["apostila.md", "notas.txt", "provas/lista.md"])
-        pages = sorted(p.name for p in (self.paths.ingestao / "apostila-md").iterdir())
+        pages = sorted(p.name for p in self.out("apostila-md").iterdir())
         self.assertEqual(pages, ["pagina-0001.txt", "pagina-0002.txt", "pagina-0003.txt"])
-        self.assertEqual(len(list((self.paths.ingestao / "notas-txt").iterdir())), 3, "130 linhas em blocos de 60")
-        protected = self.paths.protegido / "provas-lista-md.json"
+        self.assertEqual(len(list(self.out("notas-txt").iterdir())), 3, "130 linhas em blocos de 60")
+        protected = next(self.paths.protegido.glob("provas-lista-md-*.json"))
         raw = protected.read_text(encoding="utf-8")
         self.assertNotIn("Gabarito", raw)
         self.assertEqual(json.loads(raw)["codificacao"], "zlib+base64")
-        self.assertFalse((self.paths.ingestao / "provas-lista-md").exists())
+        self.assertEqual(list(self.paths.ingestao.glob("provas-lista-md*")), [])
         again = ingest(self.paths, self.now)
         self.assertEqual(sorted(again["inalterados"]), ["apostila.md", "notas.txt", "provas/lista.md"])
 
@@ -50,7 +55,49 @@ class IngestTest(TempWorkspaceCase):
         ingest(self.paths, self.now)
         (self.paths.fontes / "notas.txt").unlink()
         ingest(self.paths, self.now)
-        self.assertFalse((self.paths.ingestao / "notas-txt").exists())
+        self.assertEqual(list(self.paths.ingestao.glob("notas-txt*")), [])
+
+    def test_similar_names_do_not_collide(self) -> None:
+        (self.paths.fontes / "Aula 1.md").write_text("# A\nprimeira\n", encoding="utf-8")
+        (self.paths.fontes / "aula_1.md").write_text("# B\nsegunda\n", encoding="utf-8")
+        ingest(self.paths, self.now)
+        first = read_text(self.paths, "Aula 1.md", None, protected=False)["paginas"][0]["texto"]
+        second = read_text(self.paths, "aula_1.md", None, protected=False)["paginas"][0]["texto"]
+        self.assertIn("primeira", first)
+        self.assertIn("segunda", second)
+
+    def test_uppercase_provas_is_protected_and_flagged(self) -> None:
+        (self.paths.fontes / "Provas").mkdir()
+        (self.paths.fontes / "Provas" / "p.md").write_text("# P\n1) x\n", encoding="utf-8")
+        result = inventory(self.paths)
+        self.assertIn("renomeie_para_provas_em_minusculas", {p["problema"] for p in result["problemas"]})
+        ingest(self.paths, self.now)
+        with self.assertRaises(TutorError):
+            read_text(self.paths, "Provas/p.md", None, protected=False)
+
+    @unittest.skipIf(sys.platform == "win32", "symlinks exigem privilégio no Windows")
+    def test_symlink_into_provas_stays_protected(self) -> None:
+        os.symlink(self.paths.fontes / "provas" / "lista.md", self.paths.fontes / "atalho.md")
+        ingest(self.paths, self.now)
+        self.assertEqual(search(self.paths, "Gabarito", 10)["resultados"], [])
+        with self.assertRaises(TutorError):
+            read_text(self.paths, "atalho.md", None, protected=False)
+
+    def test_hostile_text_does_not_hang(self) -> None:
+        import time
+
+        (self.paths.fontes / "vazio.txt").write_text("\n" * 300_000 + " " * 200_000, encoding="utf-8")
+        started = time.time()
+        inventory(self.paths)
+        ingest(self.paths, self.now)
+        self.assertLess(time.time() - started, 10)
+
+    def test_page_ranges(self) -> None:
+        ingest(self.paths, self.now)
+        self.assertEqual([p["pagina"] for p in read_text(self.paths, "apostila.md", "1,3", protected=False)["paginas"]], [1, 3])
+        for bad in ("0", "2-1", "1-999999999", "a", "1-x"):
+            with self.subTest(bad=bad), self.assertRaises(TutorError):
+                read_text(self.paths, "apostila.md", bad, protected=False)
 
     def test_injection_alert(self) -> None:
         (self.paths.fontes / "slide.md").write_text(
@@ -132,6 +179,8 @@ class PdfTest(TempWorkspaceCase):
 
     @unittest.skipUnless(HAS_PDFTOPPM, "pdftoppm não instalado")
     def test_render_page(self) -> None:
+        with self.assertRaises(TutorError):
+            render_page(self.paths, "provas/prova.pdf", 1, 5000)
         result = render_page(self.paths, "provas/prova.pdf", 1, 50)
         image = self.paths.root / result["imagem"]
         self.assertTrue(image.is_file())
