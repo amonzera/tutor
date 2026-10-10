@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "materia": "probabilidade-basica",
+  "conceitos": [
+    {
+      "id": "espaco-amostral",
+      "nome": "Experimento aleatório e espaço amostral",
+      "descricao": "Experimento cujo resultado não se sabe de antemão; espaço amostral é o conjunto de todos os resultados possíveis.",
+      "tema": "fundamentos",
+      "peso": 2,
+      "prerequisitos": [],
+      "fontes": [{"arquivo": "apostila-probabilidade.md", "local": "seção Experimento aleatório e espaço amostral"}],
+      "origem": "fontes",
+      "equivocos": ["achar que todos os resultados listados são igualmente prováveis", "somar etapas em vez de multiplicar"]
+    },
+    {
+      "id": "eventos",
+      "nome": "Eventos e operações",
+      "descricao": "Evento é um subconjunto do espaço amostral; união, interseção, complementar e eventos mutuamente exclusivos.",
+      "tema": "fundamentos",
+      "peso": 2,
+      "prerequisitos": ["espaco-amostral"],
+      "fontes": [{"arquivo": "apostila-probabilidade.md", "local": "seção Eventos e operações"}],
+      "origem": "fontes",
+      "equivocos": ["confundir união com interseção", "tratar evento como um único resultado"]
+    },
+    {
+      "id": "prob-classica",
+      "nome": "Probabilidade clássica",
+      "descricao": "Com resultados equiprováveis, P(A) = casos favoráveis / casos possíveis.",
+      "tema": "fundamentos",
+      "peso": 3,
+      "prerequisitos": ["espaco-amostral"],
+      "fontes": [{"arquivo": "apostila-probabilidade.md", "local": "seção Probabilidade clássica"}],
+      "origem": "fontes",
+      "equivocos": ["dividir favoráveis por desfavoráveis", "incluir ou excluir o extremo errado (maior que x maior ou igual a x)"]
+    },
+    {
+      "id": "contagem",
+      "nome": "Princípio multiplicativo e combinações",
+      "descricao": "Contar possibilidades multiplicando etapas; arranjo quando a ordem importa, combinação quando não importa.",
+      "tema": "contagem",
+      "peso": 3,
+      "prerequisitos": [],
+      "fontes": [
+        {"arquivo": "apostila-probabilidade.md", "local": "seção Contagem: princípio multiplicativo e combinações"},
+        {"arquivo": "anotacoes-aula.txt", "local": "Aula 4"}
+      ],
+      "origem": "fontes",
+      "equivocos": ["contar com ordem quando a ordem não importa", "somar opções em vez de multiplicar", "esquecer se há repetição"]
+    },
+    {
+      "id": "regra-soma",
+      "nome": "Regra da soma e evento complementar",
+      "descricao": "P(A ou B) = P(A) + P(B) - P(A e B); P(complementar de A) = 1 - P(A).",
+      "tema": "regras",
+      "peso": 3,
+      "prerequisitos": ["eventos", "prob-classica"],
+      "fontes": [{"arquivo": "apostila-probabilidade.md", "local": "seção Regra da soma e evento complementar"}],
+      "origem": "fontes",
+      "equivocos": ["esquecer de descontar a interseção", "somar 1 em vez de subtrair no complementar"]
+    },
+    {
+      "id": "prob-condicional",
+      "nome": "Probabilidade condicional",
+      "descricao": "P(A|B) = P(A e B) / P(B): a informação de que B ocorreu reduz o universo a B.",
+      "tema": "condicional",
+      "peso": 4,
+      "prerequisitos": ["prob-classica", "regra-soma"],
+      "fontes": [
+        {"arquivo": "apostila-probabilidade.md", "local": "seção Probabilidade condicional"},
+        {"arquivo": "anotacoes-aula.txt", "local": "Aula 3"}
+      ],
+      "origem": "fontes",
+      "equivocos": ["confundir P(A|B) com P(B|A)", "não trocar o denominador pelo novo universo"]
+    },
+    {
+      "id": "regra-produto",
+      "nome": "Regra do produto",
+      "descricao": "P(A e B) = P(A) . P(B|A); sem reposição, a segunda probabilidade depende da primeira.",
+      "tema": "condicional",
+      "peso": 3,
+      "prerequisitos": ["prob-condicional"],
+      "fontes": [{"arquivo": "apostila-probabilidade.md", "local": "seção Regra do produto"}],
+      "origem": "fontes",
+      "equivocos": ["tratar retiradas sem reposição como se fossem com reposição"]
+    },
+    {
+      "id": "independencia",
+      "nome": "Independência",
+      "descricao": "A e B independentes quando P(A e B) = P(A) . P(B), ou seja, um não muda a chance do outro.",
+      "tema": "condicional",
+      "peso": 3,
+      "prerequisitos": ["prob-condicional"],
+      "fontes": [
+        {"arquivo": "apostila-probabilidade.md", "local": "seção Independência"},
+        {"arquivo": "anotacoes-aula.txt", "local": "Aula 3"}
+      ],
+      "origem": "fontes",
+      "equivocos": ["confundir independentes com mutuamente exclusivos", "somar probabilidades de eventos independentes"]
+    },
+    {
+      "id": "prob-total",
+      "nome": "Probabilidade total",
+      "descricao": "P(A) como soma ponderada das probabilidades condicionais em cada caso de uma partição.",
+      "tema": "condicional",
+      "peso": 3,
+      "prerequisitos": ["regra-produto"],
+      "fontes": [{"arquivo": "apostila-probabilidade.md", "local": "seção Probabilidade total"}],
+      "origem": "fontes",
+      "equivocos": ["somar as condicionais sem ponderar pelos pesos dos casos", "esquecer um ramo da árvore"]
+    },
+    {
+      "id": "bayes",
+      "nome": "Teorema de Bayes",
+      "descricao": "Inverte a condicional: P(B|A) = P(A|B) P(B) / P(A), com P(A) pela probabilidade total.",
+      "tema": "condicional",
+      "peso": 4,
+      "prerequisitos": ["prob-total"],
+      "fontes": [
+        {"arquivo": "apostila-probabilidade.md", "local": "seção Teorema de Bayes"},
+        {"arquivo": "anotacoes-aula.txt", "local": "Aula 3"}
+      ],
+      "origem": "fontes",
+      "equivocos": ["confundir sensibilidade do teste com probabilidade de estar doente", "ignorar a prevalência (taxa-base)"]
+    },
+    {
+      "id": "va-esperanca",
+      "nome": "Variável aleatória discreta e esperança",
+      "descricao": "Variável que associa números aos resultados; esperança é a média ponderada pelas probabilidades.",
+      "tema": "variaveis",
+      "peso": 3,
+      "prerequisitos": ["prob-classica"],
+      "fontes": [
+        {"arquivo": "apostila-probabilidade.md", "local": "seção Variável aleatória discreta e esperança"},
+        {"arquivo": "anotacoes-aula.txt", "local": "Aula 5"}
+      ],
+      "origem": "fontes",
+      "equivocos": ["fazer a média simples dos valores sem ponderar", "achar que a esperança precisa ser um valor possível"]
+    },
+    {
+      "id": "binomial",
+      "nome": "Distribuição binomial",
+      "descricao": "Número de sucessos em n tentativas independentes com a mesma probabilidade p: C(n,k) p^k (1-p)^(n-k).",
+      "tema": "variaveis",
+      "peso": 3,
+      "prerequisitos": ["contagem", "independencia", "va-esperanca"],
+      "fontes": [
+        {"arquivo": "apostila-probabilidade.md", "local": "seção Distribuição binomial"},
+        {"arquivo": "anotacoes-aula.txt", "local": "Aula 5"}
+      ],
+      "origem": "fontes",
+      "equivocos": ["esquecer o fator C(n,k) das ordens possíveis", "aplicar a binomial com tentativas dependentes"]
+    }
+  ]
+}

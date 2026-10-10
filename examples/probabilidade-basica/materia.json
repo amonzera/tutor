@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "slug": "probabilidade-basica",
+  "idioma": "pt-BR",
+  "dias_por_semana": 6,
+  "prova": {
+    "data": "2026-12-01",
+    "data_confirmada": false,
+    "n_alternativas": 5,
+    "formato": "multipla-escolha",
+    "duracao_min": 90,
+    "n_questoes": 8,
+    "observacoes": [
+      "Calculadora simples permitida."
+    ]
+  },
+  "revisao": {
+    "algoritmo": "sm2-prova",
+    "max_por_dia": 15,
+    "fracao_max_intervalo": 0.5
+  },
+  "etapas": {
+    "inventario": "ok",
+    "perguntas": "ok",
+    "ingestao": "pendente",
+    "mapa": "ok",
+    "plano": "pendente",
+    "banco": "ok",
+    "contrato": "ok"
+  },
+  "criado_em": "2026-10-09T20:59:58",
+  "ultima_sessao": null,
+  "nome": "Probabilidade Básica",
+  "objetivo": "Ir bem na Prova 1 (fictícia) de Probabilidade Básica",
+  "nivel": "iniciante",
+  "tempo_diario_min": 40,
+  "provas_marcam_resposta": true
+}

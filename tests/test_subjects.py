@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import unittest
 
-from tests.helpers import TempWorkspaceCase
+from tests.helpers import ROOT, TempWorkspaceCase
 from tutor.core import write_json
 
 
@@ -177,6 +177,28 @@ class SessionFlowTest(TempWorkspaceCase):
         self.assertEqual(out["pendencias"]["classificar"], [qid(3)])
         self.assertIn("Revisar probabilidade clássica", out["proximo_passo"])
         self.assertEqual(len(out["diario_recente"]), 2)
+
+
+class ExampleInstallTest(TempWorkspaceCase):
+    def test_install_example(self) -> None:
+        if not (ROOT / "examples" / "probabilidade-basica" / "materia.json").is_file():
+            self.skipTest("exemplo ausente")
+        code, out = self.run_cli("exemplo")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["prova"], "2026-03-23", "prova fictícia 21 dias depois de hoje")
+        folder = self.subjects / "probabilidade-basica"
+        materia = json.loads((folder / "materia.json").read_text(encoding="utf-8"))
+        self.assertTrue(all(v == "ok" for v in materia["etapas"].values()))
+        self.assertTrue(materia["prova"]["data_confirmada"])
+        self.assertTrue((folder / "plano.md").is_file())
+        self.assertFalse((folder / "estado" / "sessao.json").exists(), "estado começa vazio")
+        questions = json.loads((folder / "banco" / "questoes.json").read_text(encoding="utf-8"))["questoes"]
+        self.assertGreaterEqual(len(questions), 20)
+        self.assertTrue(all(q["verificacao"] == "verificada" for q in questions))
+        code, out = self.run_cli("exemplo")
+        self.assertEqual(out["erro"], "exemplo_ja_instalado")
+        code, out = self.run_cli("contexto")
+        self.assertTrue(out["primeira_sessao"])
 
 
 if __name__ == "__main__":

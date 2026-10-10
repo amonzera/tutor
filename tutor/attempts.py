@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from tutor.bank import check_answer, load_bank, load_key, normalize_letter, public_view
+from tutor.bank import check_answer, load_bank, load_key, normalize_letter, parse_number, public_view
 from tutor.core import (
     SCHEMA_VERSION,
     Context,
@@ -142,6 +142,15 @@ def present(paths: SubjectPaths, qid: str, mode: str, now: datetime) -> dict[str
     question = questions.get(qid)
     if question is None:
         raise TutorError("questao_inexistente", f"Questão {qid!r} não existe no banco.")
+    if mode == "verificacao":
+        return {
+            "status": "ok", "modo": mode, "questao": public_view(question),
+            "llm_directive": (
+                "Verificação às cegas: resolva sozinho, sem procurar a resposta em outro lugar, confira contas com "
+                "`calc` e registre com `banco registrar-verificacao` (use --alerta se a questão for ambígua, não "
+                "tiver resposta certa ou tiver defeito no enunciado)."
+            ),
+        }
     if question.get("verificacao") == "divergente":
         raise TutorError(
             "questao_fora_de_uso",
@@ -409,8 +418,11 @@ def answer_exam(
     if qid in exam["respostas"] and not replace:
         raise TutorError("ja_respondida", f"A questão {qid} já foi respondida (use --substituir para trocar).")
     question = load_bank(paths)[qid]
-    if answer is not None and question.get("tipo", "multipla-escolha") == "multipla-escolha":
+    kind = question.get("tipo", "multipla-escolha")
+    if answer is not None and kind == "multipla-escolha":
         answer = normalize_letter(answer, sorted(question.get("alternativas") or {}))
+    elif answer is not None and kind == "numerica":
+        parse_number(answer)  # recusa já, e não só no encerramento, uma resposta que não é número
     exam["respostas"][qid] = {"resposta": answer, "confianca": confidence, "segundos": seconds, "em": now.isoformat()}
     write_json(paths.simulado, exam)
     status = exam_status(paths, now)
@@ -433,7 +445,10 @@ def finish_exam(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
             continue
         given = exam["respostas"].get(qid)
         answer = given.get("resposta") if given else None
-        verdict = check_answer(question, entry, answer)
+        try:
+            verdict = check_answer(question, entry, answer)
+        except TutorError:  # resposta inválida gravada antes da validação: conta como errada
+            verdict = {**check_answer(question, entry, None), "resposta_aluno": answer}
         confidence = int(given["confianca"]) if given else 1
         when = given["em"] if given else now.isoformat()
         after_reveal = any(a.id == qid and datetime.fromisoformat(when) - a.at <= REVEAL_WINDOW for a in previous)
@@ -532,7 +547,8 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p = sub.add_parser("apresentar", help="mostra a questão em texto e abre a tentativa (tema oculto)")
     p.add_argument("--materia")
     p.add_argument("--questao", required=True)
-    p.add_argument("--modo", choices=PRACTICE_MODES + ("simulado",), default="treino")
+    p.add_argument("--modo", choices=PRACTICE_MODES + ("simulado", "verificacao"), default="treino",
+                   help="verificacao: só para o agente verificador (não abre tentativa)")
     p.set_defaults(handler=cmd_present)
 
     p = sub.add_parser("corrigir", help="registra a resposta e a confiança do aluno e só então revela")

@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "materia": "probabilidade-basica",
+  "aviso": "Conteúdo codificado (zlib + base64) para não ser lido por acidente durante o estudo, nem pelo tutor nem por você. Não é criptografia. Para ver em texto, rode no seu próprio terminal: bash bin/tutor.sh banco exportar --materia <slug> --para <arquivo>",
+  "codificacao": "zlib+base64",
+  "conteudo": "eNrFll2K2zAQx68y+KkBZyuNP5IY+pBsD1Bo30pZFFspAttKZXsphJymD2XPkYt1nNCyHSgrygqBiUdfzk8jzX/mlDjbqEYNSQWfT4lqtRsV2f3Utikkte0PRvX13FVQW3dkJCiwXEqxFJtPKCuxqvJNQoOmmQeP+6UQcm7b/aDdo6qtnr+ezF1OD0c7XP8h2c0dj2Z66JSr1YM9mNqolkYOqh30OYX/xilWDAc9cO7D4XDvZBG9s65uh/MMJ4+LgwyniIuTM5wyLk7JcFYeOBgOZ81w1h444i5bFcGQpGBIGz+kcEAsvm6ALwKJLNyxSXaLpI8+b2HqzeWHhR28g5NMAVPIUshTKM93sAXTj9oN+vLzzxyk/nvbHVvd6X5UDhpN82iA1hTXZeF2yDRW+kj+R9OlMMz4pm/0UdMP7WlI4WjNAB/ebBfwnV67Be1BpAU1RJpfbXLFt0nD5QnM10m1oObZzCOLcLtFfsXiZhRkEi7jZhTMGE4RMf0TTsFwSi89yMMBsfJI+uSU9+FwWE6RfjllHQ6Ia8km6nXOWHShTz6Rb/EmEmGQWIShjOshFmHoI/7bcDgsvjDzutAlhiuSMhZjGFehc1azYRH1wHKWTtFHoaUQ4mWiK4HrVK3svKgmPpv8g0SKSuYehdpvir+qFlDjbFElMtrGDkBP7cx4eXKGzEaBm/bOkCdeBQtfH+vL+RdSxMd0"
+}

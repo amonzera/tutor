@@ -169,6 +169,30 @@ def check_links() -> list[str]:
     return problems
 
 
+def check_example() -> list[str]:
+    """Valida mapa e banco da matéria de exemplo numa cópia temporária (não altera arquivos versionados)."""
+    import json
+    import os
+    import tempfile
+
+    source = ROOT / "examples" / "probabilidade-basica"
+    if not source.is_dir():
+        return ["examples/probabilidade-basica não existe"]
+    problems = []
+    with tempfile.TemporaryDirectory() as tmp:
+        shutil.copytree(source, Path(tmp) / "probabilidade-basica")
+        env = {**os.environ, "TUTOR_MATERIAS_DIR": tmp, "PYTHONUTF8": "1"}
+        for step in ("mapa", "banco"):
+            done = subprocess.run(
+                [sys.executable, "-m", "tutor", "validar", "--materia", "probabilidade-basica", "--etapa", step],
+                cwd=ROOT, env=env, capture_output=True, text=True, encoding="utf-8",
+            )
+            payload = json.loads(done.stdout or "{}")
+            if payload.get("status") != "ok":
+                problems.append(f"exemplo, etapa {step}: {payload.get('problemas') or payload.get('mensagem')}")
+    return problems
+
+
 def check_markdown() -> list[str]:
     tool = shutil.which("markdownlint-cli2")
     if tool is None:
@@ -183,6 +207,7 @@ STEPS = {
     "privacidade": check_privacy,
     "gitignore": check_gitignore,
     "links": check_links,
+    "exemplo": check_example,
     "markdown": check_markdown,
 }
 
