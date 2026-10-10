@@ -1,0 +1,19 @@
+Anotações de aula (fictícias) - Probabilidade Básica
+
+Aula 3: condicional e Bayes
+
+- O professor insistiu: "sabendo que" sempre muda o denominador. Primeiro descobrir qual é o novo universo.
+- Truque das frequências para Bayes: imaginar 1000 pessoas. Com prevalência de 1%, são 10 doentes e 990 sãos.
+  Se o teste acerta 90% dos doentes, 9 doentes dão positivo. Se erra 5% dos sãos, quase 50 sãos dão positivo.
+  Positivos no total: perto de 59. Doentes entre os positivos: 9 em 59, cerca de 15%.
+- Lembrete: independência é sobre informação (um evento não muda a chance do outro), não sobre "não acontecer junto".
+
+Aula 4: contagem
+
+- Pergunta que decide tudo: a ordem importa? Se trocar a ordem gera outra coisa, é arranjo; se não, combinação.
+- Com repetição permitida, multiplica as opções de cada posição sem diminuir.
+
+Aula 5: variáveis aleatórias
+
+- Esperança é média ponderada pelas probabilidades, não a média simples dos valores.
+- Binomial: só vale com tentativas independentes e a mesma probabilidade de sucesso em todas.

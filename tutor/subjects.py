@@ -154,7 +154,7 @@ def apply_config(materia: dict[str, Any], args: argparse.Namespace) -> None:
             prova["data_confirmada"] = False
         else:
             prova["data"] = parse_date(args.data_prova).isoformat()
-            prova.setdefault("data_confirmada", True)
+            prova["data_confirmada"] = True
     if args.data_confirmada is not None:
         prova["data_confirmada"] = args.data_confirmada == "sim"
     for key, value in {"formato": args.formato, "duracao_min": args.duracao, "n_questoes": args.questoes,

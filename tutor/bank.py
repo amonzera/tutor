@@ -42,7 +42,7 @@ ID_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 LETTER_KEYS = "ABCDEFGHIJ"
 FORBIDDEN_KEYS = ("resposta", "gabarito", "correta", "solucao", "distratores", "answer")
 LEAK_MARKERS = re.compile(
-    r"(gabarito|resposta\s+correta|alternativa\s+correta|\(\s*correta\s*\)|\bcorreta\s*:|\[x\]|\u2713|\u2714)",
+    r"(gabarito|resposta\s+correta|alternativa\s+correta|\(\s*correta\s*\)|\bcorreta\s*:|(?<![A-Za-z0-9])\[x\]|\u2713|\u2714)",
     re.IGNORECASE,
 )
 DEFAULT_REL_TOLERANCE = 0.01
@@ -392,22 +392,30 @@ def compare_verification(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
     key = load_key(paths)
     rounds = read_protected(paths.verificacao, {"rodadas": []}).get("rodadas", [])
     latest: dict[str, dict[str, Any]] = {}
+    confirmations: dict[str, dict[str, Any]] = {}
     for record in rounds:
-        latest[record["id"]] = record
+        if "confirmacao" in record:
+            confirmations[record["id"]] = record
+        else:
+            latest[record["id"]] = record
     summary = {state: [] for state in VERIFICATION_STATES}
     rows = []
     for qid, question in questions.items():
         record = latest.get(qid)
         entry = key.get(qid)
         note = ""
-        if record is None or entry is None:
+        if question.get("tipo") == "aberta" and qid in confirmations and entry is not None:
+            confirmed = confirmations[qid]["confirmacao"] == "certo"
+            state = "verificada" if confirmed else "divergente"
+            note = "" if confirmed else "resposta independente não atende à rubrica"
+        elif record is None or entry is None:
             state = "pendente"
         elif record.get("alerta"):
             state, note = "aviso", f"verificador marcou: {record['alerta']}"
         else:
             verdict = check_answer(question, entry, str(record["resposta"]))
             if verdict["correta"] is None:
-                state, note = "pendente", "questão aberta: conferir a rubrica manualmente"
+                state, note = "pendente", "questão aberta: conferir com `banco conferir-aberta` e `banco confirmar`"
             elif verdict["correta"]:
                 state = "verificada" if int(record["confianca"]) >= 3 else "aviso"
                 note = "" if state == "verificada" else "verificador concordou com baixa confiança"
@@ -437,6 +445,36 @@ def compare_verification(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
     lines += [f"| {qid} | {state} | {note or '-'} |" for qid, state, note in rows]
     write_text(paths.verificacao_md, "\n".join(lines))
     return {state: ids for state, ids in summary.items()}
+
+
+def open_review(paths: SubjectPaths, qid: str) -> dict[str, Any]:
+    """Para conferir uma questão aberta: rubrica, solução e a resposta independente do verificador."""
+    question = load_bank(paths).get(qid)
+    if question is None or question.get("tipo") != "aberta":
+        raise TutorError("nao_e_aberta", f"{qid!r} não é uma questão aberta do banco.")
+    entry = load_key(paths).get(qid) or {}
+    rounds = read_protected(paths.verificacao, {"rodadas": []}).get("rodadas", [])
+    answers = [r for r in rounds if r.get("id") == qid and "confirmacao" not in r]
+    if not answers:
+        raise TutorError("sem_verificacao", f"O verificador ainda não respondeu {qid}.")
+    return {
+        "questao": public_view(question),
+        "rubrica": entry.get("rubrica") or [],
+        "solucao": entry.get("solucao"),
+        "resposta_verificador": answers[-1]["resposta"],
+        "confianca_verificador": answers[-1]["confianca"],
+    }
+
+
+def confirm_open(paths: SubjectPaths, qid: str, mark: str, notes: str | None, now: datetime) -> None:
+    if mark not in ("certo", "errado"):
+        raise TutorError("nota_invalida", "Use certo ou errado.")
+    open_review(paths, qid)  # valida que é aberta e que o verificador já respondeu
+    data = read_protected(paths.verificacao, {"rodadas": []})
+    data.setdefault("rodadas", []).append(
+        {"id": qid, "confirmacao": mark, "observacoes": notes or "", "em": now.isoformat()}
+    )
+    write_protected(paths.verificacao, paths.slug, data)
 
 
 # ---------------------------------------------------------------- subcomandos
@@ -482,6 +520,24 @@ def cmd_compare(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
             "aluno sem revelar respostas. Para divergentes, ofereça regenerar a questão ou removê-la."
         ),
     }
+
+
+def cmd_open_review(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
+    paths = resolve_subject(ctx, args.materia)
+    return {
+        "status": "ok",
+        **open_review(paths, args.questao),
+        "llm_directive": (
+            "Só na preparação da matéria, nunca com o aluno presente: julgue se a resposta do verificador atende "
+            "à rubrica (ou passe os três ao agente corretor) e registre com `banco confirmar --nota certo|errado`."
+        ),
+    }
+
+
+def cmd_confirm(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
+    paths = resolve_subject(ctx, args.materia)
+    confirm_open(paths, args.questao, args.nota, args.obs, ctx.clock.now())
+    return {"status": "ok", "questao": args.questao, "llm_directive": "Registrado. Rode `banco comparar` para atualizar os status."}
 
 
 def cmd_remove(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
@@ -537,6 +593,18 @@ def add_commands(sub: argparse._SubParsersAction) -> None:
     p = bank_sub.add_parser("comparar", help="confronta o verificador com o gabarito e atualiza os status")
     p.add_argument("--materia")
     p.set_defaults(handler=cmd_compare)
+
+    p = bank_sub.add_parser("conferir-aberta", help="rubrica e resposta do verificador de uma questão aberta (preparação)")
+    p.add_argument("--materia")
+    p.add_argument("--questao", required=True)
+    p.set_defaults(handler=cmd_open_review)
+
+    p = bank_sub.add_parser("confirmar", help="registra se a resposta independente de uma questão aberta atende à rubrica")
+    p.add_argument("--materia")
+    p.add_argument("--questao", required=True)
+    p.add_argument("--nota", required=True, choices=("certo", "errado"))
+    p.add_argument("--obs")
+    p.set_defaults(handler=cmd_confirm)
 
     p = bank_sub.add_parser("remover", help="remove uma questão do banco e do gabarito")
     p.add_argument("--materia")

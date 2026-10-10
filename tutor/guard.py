@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shlex
 import sys
 from typing import Any
@@ -39,7 +40,8 @@ PROTECTED_MARKERS = (
 )
 WRITER_MARKERS = ("banco/rascunhos", "figuras-temp")
 OPERATORS = {";", "&", "&&", "|", "||", "|&", ";;", "(", ")", "<", ">", ">>", "<<", "&>"}
-SEARCH_PROGRAMS = {"grep", "egrep", "fgrep", "zgrep", "rg", "ag", "ack", "ack-grep"}
+SHELL_PREFIXES = {"do", "then", "else", "elif", "if", "while", "until", "!", "time", "command", "exec", "env", "{"}
+ASSIGNMENT = re.compile(r"[A-Za-z_][A-Za-z0-9_]*=.*")
 FILE_READERS = {"cat", "head", "tail", "less", "more", "grep", "egrep", "rg", "awk", "sed", "strings", "xxd", "od", "base64"}
 
 REASON_VERIFIER = (
@@ -81,8 +83,17 @@ def _segments(tokens: list[str]) -> list[list[str]]:
     return segments
 
 
+def _strip_prefixes(segment: list[str]) -> list[str]:
+    """Remove palavras-chave do shell e atribuições de variável do início do segmento."""
+    index = 0
+    while index < len(segment) and (segment[index] in SHELL_PREFIXES or ASSIGNMENT.fullmatch(segment[index])):
+        index += 1
+    return segment[index:]
+
+
 def _engine_args(segment: list[str]) -> list[str] | None:
     """Argumentos depois de `bash bin/tutor.sh` (ou de `./bin/tutor.sh` chamado direto)."""
+    segment = _strip_prefixes(segment)
     if len(segment) >= 2 and segment[0] in ("bash", "sh") and segment[1].replace("\\", "/").endswith("bin/tutor.sh"):
         return segment[2:]
     if segment and segment[0].replace("\\", "/").endswith("bin/tutor.sh"):
@@ -175,6 +186,9 @@ def decide(event: dict[str, Any]) -> str | None:
                     return REASON_INGESTOR
             if args[:2] == ["banco", "exportar"]:
                 return REASON_EXPORT
+            continue
+        segment = _strip_prefixes(segment)
+        if not segment:
             continue
         text = " ".join(segment).replace("\\", "/")
         program = segment[0].rsplit("/", 1)[-1]

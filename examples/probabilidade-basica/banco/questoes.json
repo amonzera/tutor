@@ -1,0 +1,520 @@
+{
+  "schema_version": 1,
+  "materia": "probabilidade-basica",
+  "questoes": [
+    {
+      "id": "pb-001",
+      "enunciado": "Um dado honesto de seis faces é lançado uma vez. Qual é a probabilidade de sair um número maior que 4?",
+      "alternativas": {
+        "A": "1/6",
+        "B": "1/3",
+        "C": "1/2",
+        "D": "2/3",
+        "E": "5/6"
+      },
+      "conceitos": [
+        "prob-classica"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/prova-ficticia-2025.pdf",
+        "pagina": 1,
+        "numero": 1
+      },
+      "tipo": "multipla-escolha",
+      "tema": "fundamentos",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-002",
+      "enunciado": "Num lote, a probabilidade de uma peça ter defeito é 0,08. Escolhida uma peça ao acaso, qual é a probabilidade de ela não ter defeito?",
+      "alternativas": {
+        "A": "0,08",
+        "B": "0,80",
+        "C": "0,92",
+        "D": "0,98",
+        "E": "1,08"
+      },
+      "conceitos": [
+        "regra-soma"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/prova-ficticia-2025.pdf",
+        "pagina": 1,
+        "numero": 2
+      },
+      "tipo": "multipla-escolha",
+      "tema": "regras",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-003",
+      "enunciado": "Numa turma de 40 estudantes, 24 estudam pela manhã e, desses, 6 também trabalham. Sorteado um estudante, e sabendo que ele estuda pela manhã, qual é a probabilidade de que trabalhe?",
+      "alternativas": {
+        "A": "6/40",
+        "B": "6/24",
+        "C": "24/40",
+        "D": "6/34",
+        "E": "18/24"
+      },
+      "conceitos": [
+        "prob-condicional"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/prova-ficticia-2025.pdf",
+        "pagina": 1,
+        "numero": 3
+      },
+      "tipo": "multipla-escolha",
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-004",
+      "enunciado": "Uma moeda honesta é lançada duas vezes. Qual é a probabilidade de sair cara nos dois lançamentos?",
+      "alternativas": {
+        "A": "1/8",
+        "B": "1/4",
+        "C": "1/3",
+        "D": "1/2",
+        "E": "3/4"
+      },
+      "conceitos": [
+        "independencia"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/prova-ficticia-2025.pdf",
+        "pagina": 2,
+        "numero": 4
+      },
+      "tipo": "multipla-escolha",
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-005",
+      "enunciado": "De um grupo de 6 pessoas, quantas comissões diferentes de 2 pessoas podem ser formadas?",
+      "alternativas": {
+        "A": "12",
+        "B": "15",
+        "C": "30",
+        "D": "36",
+        "E": "64"
+      },
+      "conceitos": [
+        "contagem"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/prova-ficticia-2025.pdf",
+        "pagina": 2,
+        "numero": 5
+      },
+      "tipo": "multipla-escolha",
+      "tema": "contagem",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-006",
+      "enunciado": "Um teste para uma doença rara (1% da população) detecta 90% dos doentes e dá falso positivo em 5% dos sãos. Uma pessoa teve resultado positivo. A chance de ela estar doente é mais próxima de:",
+      "alternativas": {
+        "A": "1%",
+        "B": "15%",
+        "C": "50%",
+        "D": "90%",
+        "E": "95%"
+      },
+      "conceitos": [
+        "bayes"
+      ],
+      "dificuldade": 3,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/prova-ficticia-2025.pdf",
+        "pagina": 2,
+        "numero": 6
+      },
+      "tipo": "multipla-escolha",
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-007",
+      "tipo": "numerica",
+      "enunciado": "Um jogo paga R$ 10 com probabilidade 0,2 e nada caso contrário. Qual é o valor esperado do pagamento, em reais?",
+      "unidade": "reais",
+      "conceitos": [
+        "va-esperanca"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/lista-1.md",
+        "numero": 1
+      },
+      "tema": "variaveis",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-008",
+      "tipo": "numerica",
+      "enunciado": "Uma moeda honesta é lançada 4 vezes. Qual é a probabilidade de saírem exatamente 2 caras?",
+      "conceitos": [
+        "binomial"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/lista-1.md",
+        "numero": 2
+      },
+      "tema": "variaveis",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-009",
+      "tipo": "numerica",
+      "enunciado": "Uma urna tem 3 bolas vermelhas e 2 azuis. Retiram-se duas bolas, sem reposição. Qual é a probabilidade de as duas serem vermelhas?",
+      "conceitos": [
+        "regra-produto"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/lista-1.md",
+        "numero": 3
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-010",
+      "tipo": "numerica",
+      "enunciado": "Uma fábrica tem duas máquinas. A máquina A produz 60% das peças, com 2% de defeituosas; a máquina B produz 40%, com 5% de defeituosas. Qual é a probabilidade de uma peça escolhida ao acaso ser defeituosa?",
+      "conceitos": [
+        "prob-total"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/lista-1.md",
+        "numero": 4
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-011",
+      "tipo": "aberta",
+      "enunciado": "No lançamento de um dado, sejam A = {1, 2, 3} e B = {2, 4, 6}. Descreva A ∪ B, A ∩ B e o complementar de A.",
+      "conceitos": [
+        "eventos"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/lista-1.md",
+        "numero": 5
+      },
+      "tema": "fundamentos",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-012",
+      "tipo": "aberta",
+      "enunciado": "Os eventos A e B têm P(A) = 0,5, P(B) = 0,4 e P(A ∩ B) = 0,2. Eles são independentes? Justifique.",
+      "conceitos": [
+        "independencia"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "fonte",
+        "arquivo": "provas/lista-1.md",
+        "numero": 6
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-013",
+      "enunciado": "Lançam-se uma moeda e um dado, e anota-se o par de resultados. Quantos elementos tem o espaço amostral?",
+      "alternativas": {
+        "A": "8",
+        "B": "12",
+        "C": "36",
+        "D": "6",
+        "E": "2"
+      },
+      "conceitos": [
+        "espaco-amostral"
+      ],
+      "dificuldade": 1,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "fundamentos",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-014",
+      "enunciado": "Ao lançar dois dados e anotar a soma das faces, os resultados possíveis vão de 2 a 12. Qual afirmação é correta?",
+      "alternativas": {
+        "A": "Os 11 resultados possíveis são igualmente prováveis.",
+        "B": "A soma 7 é a mais provável.",
+        "C": "A soma 2 e a soma 7 têm a mesma probabilidade.",
+        "D": "Há 12 resultados possíveis para a soma.",
+        "E": "A soma 12 é mais provável que a soma 2, por ser maior."
+      },
+      "conceitos": [
+        "espaco-amostral"
+      ],
+      "dificuldade": 2,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "fundamentos",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-015",
+      "enunciado": "No lançamento de um dado, sejam A = \"sair par\" e B = \"sair maior que 3\". O evento A ∩ B é:",
+      "alternativas": {
+        "A": "{2, 4, 6}",
+        "B": "{4, 5, 6}",
+        "C": "{4, 6}",
+        "D": "{2, 4, 5, 6}",
+        "E": "o conjunto vazio"
+      },
+      "conceitos": [
+        "eventos"
+      ],
+      "dificuldade": 1,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "fundamentos",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-016",
+      "tipo": "numerica",
+      "enunciado": "Uma urna tem 4 bolas brancas e 6 pretas. Retira-se uma bola ao acaso. Qual é a probabilidade de ela ser branca?",
+      "conceitos": [
+        "prob-classica"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "fundamentos",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-017",
+      "enunciado": "Retira-se uma carta de um baralho comum de 52 cartas. Qual é a probabilidade de ela ser um ás ou uma carta de copas?",
+      "alternativas": {
+        "A": "4/52",
+        "B": "13/52",
+        "C": "17/52",
+        "D": "16/52",
+        "E": "1/52"
+      },
+      "conceitos": [
+        "regra-soma"
+      ],
+      "dificuldade": 2,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "regras",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-018",
+      "tipo": "numerica",
+      "enunciado": "Os eventos A e B são mutuamente exclusivos, com P(A) = 0,5 e P(B) = 0,3. Calcule P(A ∪ B).",
+      "conceitos": [
+        "regra-soma"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "regras",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-019",
+      "enunciado": "Numa cidade, P(chuva) = 0,3 e P(trânsito | chuva) = 0,8. Qual afirmação é correta?",
+      "alternativas": {
+        "A": "P(chuva | trânsito) = 0,8.",
+        "B": "Em 80% dos dias de chuva há trânsito.",
+        "C": "80% dos dias com trânsito são chuvosos.",
+        "D": "P(chuva e trânsito) = 0,8.",
+        "E": "P(trânsito) = 0,8."
+      },
+      "conceitos": [
+        "prob-condicional"
+      ],
+      "dificuldade": 2,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-020",
+      "tipo": "numerica",
+      "enunciado": "Retiram-se duas cartas, sem reposição, de um baralho comum de 52 cartas. Qual é a probabilidade de as duas serem ases? (Responda em decimal ou fração.)",
+      "conceitos": [
+        "regra-produto"
+      ],
+      "dificuldade": 2,
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-021",
+      "enunciado": "Os eventos A e B são independentes, com P(A) = 0,4 e P(B) = 0,5. Quanto vale P(A ∩ B)?",
+      "alternativas": {
+        "A": "0,9",
+        "B": "0,2",
+        "C": "0,45",
+        "D": "0,1",
+        "E": "0"
+      },
+      "conceitos": [
+        "independencia"
+      ],
+      "dificuldade": 1,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-022",
+      "enunciado": "A urna 1 tem 2 bolas brancas e 2 pretas; a urna 2 tem 3 brancas e 1 preta. Escolhe-se uma urna lançando uma moeda honesta e retira-se uma bola dela. Qual é a probabilidade de sair branca?",
+      "alternativas": {
+        "A": "5/8",
+        "B": "5/16",
+        "C": "1/2",
+        "D": "3/4",
+        "E": "5/4"
+      },
+      "conceitos": [
+        "prob-total"
+      ],
+      "dificuldade": 2,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-023",
+      "tipo": "numerica",
+      "enunciado": "Uma fábrica tem duas máquinas: a A produz 60% das peças, com 2% de defeituosas; a B produz 40%, com 5% de defeituosas. Uma peça escolhida ao acaso é defeituosa. Qual é a probabilidade de ela ter vindo da máquina B?",
+      "conceitos": [
+        "bayes"
+      ],
+      "dificuldade": 3,
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "condicional",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-024",
+      "enunciado": "Uma variável aleatória X assume os valores 0, 1 e 2 com probabilidades 0,5, 0,3 e 0,2. Quanto vale E[X]?",
+      "alternativas": {
+        "A": "1",
+        "B": "0,7",
+        "C": "0,33",
+        "D": "1,3",
+        "E": "0,5"
+      },
+      "conceitos": [
+        "va-esperanca"
+      ],
+      "dificuldade": 1,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "variaveis",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-025",
+      "enunciado": "Um aluno chuta 3 questões de 5 alternativas cada, ao acaso e de forma independente. Qual é a probabilidade de acertar exatamente uma?",
+      "alternativas": {
+        "A": "0,384",
+        "B": "0,128",
+        "C": "0,2",
+        "D": "0,6",
+        "E": "0,008"
+      },
+      "conceitos": [
+        "binomial"
+      ],
+      "dificuldade": 3,
+      "tipo": "multipla-escolha",
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "variaveis",
+      "verificacao": "verificada"
+    },
+    {
+      "id": "pb-026",
+      "tipo": "numerica",
+      "enunciado": "Quantas senhas de 3 dígitos (cada um de 0 a 9) podem ser formadas, se os dígitos podem se repetir?",
+      "conceitos": [
+        "contagem"
+      ],
+      "dificuldade": 1,
+      "origem": {
+        "tipo": "gerada",
+        "lote": "originais-01"
+      },
+      "tema": "contagem",
+      "verificacao": "verificada"
+    }
+  ]
+}

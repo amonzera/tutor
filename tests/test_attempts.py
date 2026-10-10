@@ -35,6 +35,14 @@ class PracticeFlowTest(TempWorkspaceCase):
         self.assertEqual((record["confianca"], record["dicas"], record["segundos"]), (5, 1, 95))
         self.assertEqual(read_json(self.paths.sessao)["abertas"], {})
 
+    def test_verification_mode_does_not_open_attempt(self) -> None:
+        shown = attempts.present(self.paths, qid(1), "verificacao", self.now)
+        self.assertEqual(shown["modo"], "verificacao")
+        self.assertNotIn("tema", shown["questao"])
+        self.assertEqual((read_json(self.paths.sessao) or {}).get("abertas", {}), {})
+        with self.assertRaises(TutorError):
+            attempts.check(self.paths, qid(1), answer_of(1), 3, 0, None, self.now)
+
     def test_validation_of_confidence_and_hints(self) -> None:
         attempts.present(self.paths, qid(1), "treino", self.now)
         for confidence, hints in [(0, 0), (6, 0), (3, -1), (3, 5)]:
@@ -148,6 +156,16 @@ class ExamTest(TempWorkspaceCase):
         self.assertEqual(read_jsonl(self.paths.simulados)[-1]["previsao"]["mediana"], 2)
         modes = {a.mode for a in attempts.history(self.paths)}
         self.assertEqual(modes, {"simulado"})
+
+    def test_numeric_answer_is_validated_when_given(self) -> None:
+        numeric = {"tipo": "numerica", "enunciado": "Quanto vale 1/2 + 1/4?", "conceitos": ["prob-classica"],
+                   "gabarito": {"resposta": {"valor": 0.75}, "conceito_decisivo": "soma", "solucao": "3/4"}}
+        paths = build_subject(self.subjects, self.now, slug="num", extra_questions=[numeric])
+        attempts.start_exam(paths, [qid(9, "num")], 10, None, self.now)
+        with self.assertRaises(TutorError):
+            attempts.answer_exam(paths, qid(9, "num"), "A", 3, None, self.now)
+        attempts.answer_exam(paths, qid(9, "num"), "3/4", 3, None, self.now)
+        self.assertEqual(attempts.finish_exam(paths, self.now)["acertos"], 1)
 
     def test_only_one_exam_at_a_time(self) -> None:
         with self.assertRaises(TutorError):

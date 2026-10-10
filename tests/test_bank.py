@@ -55,6 +55,13 @@ class ImportTest(TempWorkspaceCase):
         self.assertEqual(len(load_bank(self.paths)), 8)
         self.assertTrue((self.paths.rascunhos / "lote-02.json").exists(), "rascunho inválido fica para correção")
 
+    def test_leak_lint_ignores_math_notation(self) -> None:
+        from tutor.bank import LEAK_MARKERS
+
+        self.assertIsNone(LEAK_MARKERS.search("Quanto vale E[X] para essa variável?"))
+        self.assertIsNotNone(LEAK_MARKERS.search("[x] B) 1/2"))
+        self.assertIsNotNone(LEAK_MARKERS.search("B) 1/2 \u2713"))
+
     def test_duplicate_id_needs_replace_flag(self) -> None:
         item = mc_draft_item("bayes", "A", 95, id=qid(1))
         with self.assertRaises(TutorError):
@@ -135,6 +142,25 @@ class VerificationTest(TempWorkspaceCase):
         self.assertNotIn("Alternativa", report)
         raw = self.paths.verificacao.read_text(encoding="utf-8")
         self.assertNotIn("duas alternativas valem", raw, "respostas do verificador também ficam codificadas")
+
+    def test_open_question_needs_confirmation(self) -> None:
+        open_item = {"tipo": "aberta", "enunciado": "Explique o que é um evento.", "conceitos": ["espaco-amostral"],
+                     "gabarito": {"rubrica": ["subconjunto do espaço amostral"], "conceito_decisivo": "evento",
+                                  "solucao": "subconjunto"}}
+        paths = build_subject(self.subjects, self.now, slug="aberta", verify=False, extra_questions=[open_item])
+        record_verification(paths, qid(9, "aberta"), "um subconjunto dos resultados", 4, False, None, None, self.now)
+        self.assertIn(qid(9, "aberta"), compare_verification(paths, self.now)["pendente"])
+        from tutor.bank import confirm_open, open_review
+
+        review = open_review(paths, qid(9, "aberta"))
+        self.assertEqual(review["resposta_verificador"], "um subconjunto dos resultados")
+        self.assertEqual(review["rubrica"], ["subconjunto do espaço amostral"])
+        confirm_open(paths, qid(9, "aberta"), "certo", None, self.now)
+        self.assertIn(qid(9, "aberta"), compare_verification(paths, self.now)["verificada"])
+        confirm_open(paths, qid(9, "aberta"), "errado", "faltou o espaço amostral", self.now)
+        self.assertIn(qid(9, "aberta"), compare_verification(paths, self.now)["divergente"])
+        with self.assertRaises(TutorError):
+            open_review(paths, qid(1, "aberta"))
 
     def test_latest_round_wins(self) -> None:
         record_verification(self.paths, qid(1), wrong_of(1), 4, False, None, None, self.now)

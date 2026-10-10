@@ -35,6 +35,8 @@ class DecideTest(unittest.TestCase):
         "texto protegido pelo tutor": bash("bash bin/tutor.sh texto --materia x --arquivo provas/p.pdf --protegido"),
         "renderizar pelo tutor": bash("bash bin/tutor.sh renderizar --materia x --arquivo provas/p.pdf --pagina 1"),
         "exportar pelo tutor": bash("bash bin/tutor.sh banco exportar --materia x --para /tmp/g.json"),
+        "exportar com variável na frente": bash("X=1 bash bin/tutor.sh banco exportar --materia x --para g.json"),
+        "leitura dentro de laço": bash("for f in a; do cat subjects/x/banco/gabarito.json; done"),
         "exportar chamando o script direto": bash("./bin/tutor.sh banco exportar --materia x --para g.json"),
         "exportar pelo ingestor": bash("bash bin/tutor.sh banco exportar --materia x --para g.json", "ingestor-de-fontes"),
         "verificador lendo fontes": bash("cat subjects/x/fontes/a.md", "verificador"),
@@ -48,6 +50,10 @@ class DecideTest(unittest.TestCase):
         "comando comum": bash("ls -la"),
         "busca recursiva em pastas de código": bash("grep -rn foo tutor docs"),
         "motor": bash("bash bin/tutor.sh corrigir --materia x --questao q1 --resposta B --confianca 3"),
+        "motor com variável na frente": bash("TUTOR_MATERIAS_DIR=examples bash bin/tutor.sh banco importar "
+                                             "--materia x --arquivo banco/rascunhos/l.json"),
+        "motor dentro de laço": bash("for l in a b; do bash bin/tutor.sh banco importar --materia x "
+                                     "--arquivo banco/rascunhos/$l.json; done"),
         "motor com caminho do projeto": bash('bash "/repo/bin/tutor.sh" contexto --materia x'),
         "listar provas": bash("ls subjects/x/fontes/provas"),
         "mover para provas": bash("mv subjects/x/fontes/lista.md subjects/x/fontes/provas/"),
