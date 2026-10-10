@@ -45,10 +45,11 @@ Opcional: chame o agente `planejador` para ajustar pesos e ordem no mapa (recorr
 
 Comece pelos conceitos dos primeiros dias do plano (pelo menos 3 questões por conceito); o resto pode vir depois.
 
-1. Há provas ou listas em `fontes/provas/`: o `ingestor-de-fontes` extrai as questões para um rascunho e roda `banco importar`.
+1. Há provas ou listas em `fontes/provas/`: o `ingestor-de-fontes` extrai as questões para um rascunho e roda `banco importar`. Se as provas trazem a resposta marcada só na página (por exemplo, em vermelho), diga isso ao ingestor: ele renderiza a página para ler a marca e usa-a como gabarito.
 2. Faltam questões: o `escritor-de-questoes` cria questões originais e roda `banco importar`.
 3. O `verificador` resolve **às cegas** cada questão pendente (ele não vê o gabarito nem as fontes). Depois rode `banco comparar`.
-4. Divergentes ficam fora de uso: ofereça regenerar ou remover (`banco remover`). Em seguida `validar --materia <pasta> --etapa banco`.
+4. Questões abertas continuam pendentes depois do `comparar` (o motor não compara texto livre): para cada uma, `banco conferir-aberta --questao <id>`, julgue se a resposta do verificador atende à rubrica (ou passe os dados ao agente `corretor`) e registre com `banco confirmar --questao <id> --nota certo|errado`. Rode `banco comparar` de novo.
+5. Divergentes ficam fora de uso: ofereça regenerar ou remover (`banco remover`). Em seguida `validar --materia <pasta> --etapa banco`.
 
 Se `materia.json` tiver `modelos.<agente>` (modelo e esforço), use esses valores ao chamar o agente. Nunca repita respostas do gabarito na conversa.
 

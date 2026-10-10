@@ -85,6 +85,8 @@ def prepare(scenario: dict[str, Any], keep: bool) -> Path:
     env_today = {"TUTOR_HOJE": setup["hoje"]} if setup.get("hoje") else {}
     if setup.get("exemplo", True):
         _engine(repo, ["exemplo"], env_today)
+    for copy in setup.get("copiar", []):  # {"de": "<pasta no repositório>", "para": "<pasta no clone>"}
+        shutil.copytree(repo / copy["de"], repo / copy["para"], dirs_exist_ok=True)
     for fixture in setup.get("fixtures", []):
         source = Path(__file__).resolve().parent / "fixtures" / fixture["de"]
         target = repo / fixture["para"]
@@ -187,8 +189,27 @@ def check_hook(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
     return ok, "hook SessionStart entregou o contexto" if ok else "hook SessionStart não apareceu"
 
 
+WRITER_AGENTS = {"ingestor-de-fontes", "escritor-de-questoes"}
+WRITER_MARKERS = ("banco/rascunhos", "figuras-temp")
+
+
+def _agent_type(run: Run, call: dict[str, Any]) -> str | None:
+    parent = call.get("agente")
+    if not parent:
+        return None
+    for candidate in run.calls():
+        if candidate["id"] == parent and candidate["name"] == "Agent":
+            return candidate["input"].get("subagent_type")
+    return None
+
+
 def check_no_protected(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
-    tries = [c for c in run.calls() if _mentions_protected(c)]
+    def allowed_for_writer(call: dict[str, Any]) -> bool:
+        text = json.dumps(call["input"], ensure_ascii=False).replace("\\\\", "/")
+        markers = [m for m in PROTECTED_MARKERS if m in text]
+        return _agent_type(run, call) in WRITER_AGENTS and all(m in WRITER_MARKERS for m in markers)
+
+    tries = [c for c in run.calls() if _mentions_protected(c) and not allowed_for_writer(c)]
     exports = [c for c in run.calls() if c["name"] == "Bash" and re.search(r"banco\s+exportar", c["input"].get("command", ""))]
     tries += exports
     if not tries:
@@ -274,6 +295,74 @@ def check_guard_blocked_verifier(run: Run, scenario: dict[str, Any]) -> tuple[bo
     return True, f"{len(outside)} tentativa(s) do verificador fora do permitido, todas negadas"
 
 
+def check_subject_ready(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    """Estado final da matéria preparada do zero: etapas, mapa, banco, plano, contrato, checkpoint."""
+    slug = scenario.get("materia", SUBJECT)
+    folder = run.workdir / "subjects" / slug
+    materia = json.loads((folder / "materia.json").read_text(encoding="utf-8")) if (folder / "materia.json").is_file() else {}
+    pending = [k for k, v in (materia.get("etapas") or {}).items() if v != "ok"]
+    problems = [f"etapas pendentes: {pending}"] if pending or not materia else []
+    for step in ("mapa", "banco"):
+        result = _engine(run.workdir, ["validar", "--materia", slug, "--etapa", step], {})
+        if result.get("status") != "ok":
+            problems.append(f"{step} inválido: {str(result.get('problemas') or result.get('mensagem'))[:200]}")
+    for name in ("plano.md", "CLAUDE.md", "estado/diario.md"):
+        if not (folder / name).is_file():
+            problems.append(f"falta {name}")
+    bank = json.loads((folder / "banco" / "questoes.json").read_text(encoding="utf-8")) if (folder / "banco" / "questoes.json").is_file() else {"questoes": []}
+    verified = sum(1 for q in bank["questoes"] if q.get("verificacao") == "verificada")
+    concepts = len(json.loads((folder / "mapa-conhecimento.json").read_text(encoding="utf-8"))["conceitos"]) if (folder / "mapa-conhecimento.json").is_file() else 0
+    summary = f"{concepts} conceitos, {len(bank['questoes'])} questões ({verified} verificadas)"
+    return (not problems), summary if not problems else "; ".join(problems) + f" | {summary}"
+
+
+def check_idempotent(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    marked = [i for i, item in enumerate(scenario["turnos"], 1) if isinstance(item, dict) and item.get("checar_idempotencia")]
+    for index in marked:
+        redo = [c for c in run.engine_calls("banco", index) if re.search(r"banco\s+importar", c)]
+        redo += [c for c in run.engine_calls("ingerir", index) if "--forcar" in c]
+        agents = [c for c in run.calls(index) if c["name"] == "Agent"]
+        if redo or agents:
+            return False, f"turno {index} refez trabalho: {len(redo)} importação/reingestão, {len(agents)} agente(s)"
+    return True, "a execução repetida não refez etapas concluídas (nenhuma importação, reingestão ou agente)"
+
+
+def check_pdf_exam_imported(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    folder = run.workdir / "subjects" / scenario.get("materia", SUBJECT)
+    bank_file = folder / "banco" / "questoes.json"
+    questions = json.loads(bank_file.read_text(encoding="utf-8"))["questoes"] if bank_file.is_file() else []
+    from_pdf = [q for q in questions if str((q.get("origem") or {}).get("arquivo", "")).endswith(".pdf")]
+    verified = sum(1 for q in from_pdf if q.get("verificacao") == "verificada")
+    if not from_pdf:
+        return False, "nenhuma questão da prova em PDF entrou no banco"
+    return True, f"{len(from_pdf)} questão(ões) da prova em PDF no banco ({verified} verificadas)"
+
+
+def check_resumed(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    """A primeira execução foi interrompida com etapas pendentes e a seguinte concluiu."""
+    if len(run.turns) < 2:
+        return False, "cenário precisa de dois turnos"
+    first, second = run.turns[0].get("etapas") or {}, run.turns[1].get("etapas") or {}
+    pending_first = [k for k, v in first.items() if v != "ok"]
+    pending_second = [k for k, v in second.items() if v != "ok"]
+    if not pending_first:
+        return False, "a interrupção não deixou etapas pendentes (teste não exercitou a retomada)"
+    if pending_second:
+        return False, f"depois da retomada ainda faltam: {pending_second}"
+    return True, f"interrompido com {pending_first} pendentes; retomado até o fim"
+
+
+def check_study_starts_with_diagnostic(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    """Na última sessão aberta (desde o último turno com `nova_sessao`): contexto e depois diagnóstico."""
+    starts = [i for i, item in enumerate(scenario["turnos"], 1) if isinstance(item, dict) and item.get("nova_sessao")]
+    first = starts[-1] if starts else 1
+    turns = range(first, len(run.turns) + 1)
+    context = any(run.engine_calls("contexto", t) for t in turns)
+    diagnostic = any("diagnostico" in c for t in turns for c in run.engine_calls("proximas", t))
+    ok = context and diagnostic
+    return ok, "a primeira sessão começou pelo contexto e pelo diagnóstico" if ok else "não começou pelo diagnóstico"
+
+
 def check_no_errors(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
     errors = [t["erro"] for t in run.turns if t["erro"]]
     return (not errors), "sem erro de execução" if not errors else f"erro: {errors[0]}"
@@ -290,6 +379,11 @@ CHECKS: dict[str, Callable[[Run, dict[str, Any]], tuple[bool, str]]] = {
     "usa_o_motor": check_engine_used,
     "simulado_adiado": check_exam_deferred,
     "guarda_barra_verificador": check_guard_blocked_verifier,
+    "materia_pronta": check_subject_ready,
+    "segunda_execucao_idempotente": check_idempotent,
+    "retomou_de_onde_parou": check_resumed,
+    "importou_prova_pdf": check_pdf_exam_imported,
+    "estudar_comeca_pelo_diagnostico": check_study_starts_with_diagnostic,
 }
 
 
@@ -304,8 +398,16 @@ def run_scenario(scenario: dict[str, Any], model: str, budget: float, keep: bool
     env = {}
     if scenario.get("preparo", {}).get("hoje"):
         env["TUTOR_HOJE"] = scenario["preparo"]["hoje"]
-    for message in scenario["turnos"]:
-        talk(run, message, model, budget, scenario.get("max_turnos", 30), env)
+    for item in scenario["turnos"]:
+        turn = item if isinstance(item, dict) else {"mensagem": item}
+        if turn.get("nova_sessao"):
+            run.session_id = None
+        talk(run, turn["mensagem"], model, budget, turn.get("max_turnos", scenario.get("max_turnos", 30)), env)
+        if turn.get("pode_parar"):  # interrupção proposital (limite de turnos): não conta como erro
+            run.turns[-1]["erro"] = None
+        materia_file = repo / "subjects" / scenario.get("materia", SUBJECT) / "materia.json"
+        if materia_file.is_file():
+            run.turns[-1]["etapas"] = json.loads(materia_file.read_text(encoding="utf-8")).get("etapas")
     results = {name: CHECKS[name](run, scenario) for name in scenario.get("verificacoes", [])}
     record = {
         "cenario": scenario["id"],
@@ -313,13 +415,38 @@ def run_scenario(scenario: dict[str, Any], model: str, budget: float, keep: bool
         "custo_usd": round(run.cost, 4),
         "verificacoes": {name: {"ok": ok, "detalhe": detail} for name, (ok, detail) in results.items()},
         "turnos": [{"mensagem": t["mensagem"], "texto": "\n".join(t["texts"])[-3000:],
-                    "chamadas": [{"ferramenta": c["name"], "entrada": c["input"], "erro": c.get("erro")} for c in t["calls"]],
-                    "negacoes": t["denials"], "segundos": t["segundos"], "erro": t["erro"]} for t in run.turns],
+                    "chamadas": [{"id": c["id"], "ferramenta": c["name"], "entrada": c["input"], "erro": c.get("erro"),
+                                  "agente": c.get("agente")} for c in t["calls"]],
+                    "negacoes": t["denials"], "segundos": t["segundos"], "erro": t["erro"], "etapas": t.get("etapas")}
+                   for t in run.turns],
         "pasta": str(repo) if keep else None,
     }
     if not keep:
         shutil.rmtree(repo.parent, ignore_errors=True)
     return record
+
+
+def reevaluate(path: Path, scenarios: list[dict[str, Any]]) -> int:
+    """Recalcula as verificações de um resultado salvo (sem gastar tokens). Precisa da pasta se o
+    cenário confere o estado final da matéria (rode com --manter)."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    by_id = {s["id"]: s for s in scenarios}
+    failures = 0
+    for record in data["execucoes"]:
+        scenario = by_id[record["cenario"]]
+        run = Run(scenario, Path(record["pasta"]) if record.get("pasta") else ROOT)
+        for turn in record["turnos"]:
+            run.turns.append({
+                "mensagem": turn["mensagem"], "texts": [turn["texto"]], "erro": turn["erro"], "etapas": turn.get("etapas"),
+                "calls": [{"id": c.get("id", ""), "name": c["ferramenta"], "input": c["entrada"], "erro": c.get("erro"),
+                           "agente": c.get("agente")} for c in turn["chamadas"]],
+            })
+        print(f"== {record['cenario']} (reavaliação)")
+        for name in scenario.get("verificacoes", []):
+            ok, detail = CHECKS[name](run, scenario)
+            failures += not ok
+            print(f"   {'ok   ' if ok else 'FALHA'} {name}: {detail}")
+    return 0 if failures == 0 else 1
 
 
 def claude_version() -> str:
@@ -338,8 +465,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--modelo", default="sonnet")
     parser.add_argument("--orcamento-usd", type=float, default=2.0, help="teto de gasto por turno")
     parser.add_argument("--manter", action="store_true", help="não apaga a pasta temporária")
+    parser.add_argument("--reavaliar", metavar="RESULTADO", help="recalcula as verificações de um resultado salvo")
     args = parser.parse_args(argv)
     scenarios = json.loads(SCENARIOS.read_text(encoding="utf-8"))["cenarios"]
+    if args.reavaliar:
+        return reevaluate(Path(args.reavaliar), scenarios)
     if args.listar:
         for s in scenarios:
             print(f"{s['id']:24} {s['descricao']}")

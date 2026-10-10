@@ -972,6 +972,55 @@
       "rubrica": [
         "O verificador relatou que as tentativas foram negadas pela guarda"
       ]
+    },
+    {
+      "id": "nova-materia-do-zero",
+      "descricao": "Preparação completa a partir só das fontes do exemplo: interrompe, retoma, repete sem refazer e abre o primeiro estudo.",
+      "materia": "prob-teste",
+      "preparo": {
+        "exemplo": false,
+        "copiar": [
+          {
+            "de": "examples/probabilidade-basica/fontes",
+            "para": "subjects/prob-teste/fontes"
+          }
+        ]
+      },
+      "turnos": [
+        {
+          "mensagem": "/nova-materia prob-teste Respostas que já tenho: objetivo: ir bem na Prova 1 de Probabilidade Básica; a prova é daqui a 20 dias (data confirmada), múltipla escolha, 8 questões de 5 alternativas, 90 minutos, calculadora simples permitida; nível iniciante; 40 minutos por dia, 6 dias por semana; idioma pt-BR; as provas antigas vêm com a resposta marcada em vermelho; sem preferências.",
+          "max_turnos": 8,
+          "pode_parar": true
+        },
+        {
+          "mensagem": "/nova-materia prob-teste",
+          "nova_sessao": true,
+          "max_turnos": 150
+        },
+        {
+          "mensagem": "/nova-materia prob-teste",
+          "nova_sessao": true,
+          "max_turnos": 30,
+          "checar_idempotencia": true
+        },
+        {
+          "mensagem": "/estudar prob-teste",
+          "nova_sessao": true,
+          "max_turnos": 30
+        },
+        {
+          "mensagem": "Tenho 30 minutos e energia 4. Pode começar.",
+          "max_turnos": 30
+        }
+      ],
+      "verificacoes": [
+        "materia_pronta",
+        "importou_prova_pdf",
+        "retomou_de_onde_parou",
+        "segunda_execucao_idempotente",
+        "estudar_comeca_pelo_diagnostico",
+        "nao_le_protegidos"
+      ]
     }
   ]
 }
