@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import unittest
 
@@ -102,6 +103,43 @@ class DecideTest(unittest.TestCase):
         for name, event in self.allowed.items():
             with self.subTest(name=name):
                 self.assertIsNone(decide(event), name)
+
+
+class AbsolutePathSearchTest(unittest.TestCase):
+    """Busca com caminho absoluto: a raiz do repositório, ou uma pasta acima dela, alcança subjects/ e examples/."""
+
+    root = ROOT.as_posix()
+
+    def grep_tool(self, path: str, cwd: str | None = None) -> dict:
+        return {"tool_name": "Grep", "tool_input": {"pattern": "resposta", "path": path}, "cwd": cwd or self.root}
+
+    def test_root_or_above_is_denied(self) -> None:
+        cases = {
+            "Grep na raiz absoluta": self.grep_tool(self.root),
+            "Grep acima da raiz": self.grep_tool(ROOT.parent.as_posix()),
+            "grep -r na raiz absoluta": bash(f"grep -r resposta {self.root}", cwd=self.root),
+            "rg na raiz absoluta com aspas": bash(f'rg resposta "{self.root}/"', cwd=self.root),
+            "grep -r relativo a partir de uma pasta acima": bash(f"grep -r resposta {ROOT.name}", cwd=ROOT.parent.as_posix()),
+        }
+        for name, event in cases.items():
+            with self.subTest(name=name):
+                self.assertIsNotNone(decide(event), name)
+
+    def test_code_folders_are_allowed(self) -> None:
+        cases = {
+            "Grep em tutor/ absoluto": self.grep_tool((ROOT / "tutor").as_posix()),
+            "grep -r em docs/ absoluto": bash(f"grep -rn foo {(ROOT / 'docs').as_posix()}", cwd=self.root),
+        }
+        for name, event in cases.items():
+            with self.subTest(name=name):
+                self.assertIsNone(decide(event), name)
+
+    @unittest.skipIf(os.name == "nt", "o caminho UNC do WSL só aparece com o motor rodando no Linux do WSL")
+    def test_windows_unc_paths(self) -> None:
+        unc = "\\\\wsl.localhost\\Ubuntu" + str(ROOT).replace("/", "\\")
+        self.assertIsNotNone(decide(self.grep_tool(unc, cwd=unc)), "raiz no formato do aplicativo do Windows")
+        self.assertIsNone(decide(self.grep_tool(unc + "\\tutor", cwd=unc)), "pasta de código no formato UNC")
+        self.assertIsNotNone(decide(bash("grep -r resposta //wsl$/Ubuntu" + self.root, cwd=unc)))
 
 
 class HookScriptTest(unittest.TestCase):
