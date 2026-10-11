@@ -4,7 +4,6 @@ Obrigado pelo interesse. Contribuições são bem-vindas: correções, novas ski
 
 ## Antes de começar
 
-- Leia o [código de conduta](CODE_OF_CONDUCT.md).
 - Para mudanças grandes (novo módulo, mudança de formato de dados, novo agente), abra uma issue antes, descrevendo o problema e a proposta.
 - Veja [docs/DESENVOLVIMENTO.md](docs/DESENVOLVIMENTO.md): estrutura, testes, como criar uma matéria de teste, como acrescentar subcomandos, skills e agentes.
 
