@@ -4,11 +4,29 @@ Tudo o que você precisa para estudar com o tutor. O resumo está no [README](..
 
 ## 1. Instalação
 
-Requisitos:
+Você precisa de uma conta com acesso ao [Claude Code](https://code.claude.com/docs). O tutor usa Python 3.10 ou mais novo (sem pacotes a instalar) e, para ler PDFs, o `pdftotext` do poppler.
 
-- [Claude Code](https://code.claude.com/docs) (terminal, aplicativo desktop ou extensão de IDE).
-- Python 3.10 ou mais novo. Não há pacotes a instalar.
-- Opcional, para ler PDFs: `pdftotext` do poppler (Linux: `sudo apt install poppler-utils`; macOS: `brew install poppler`). Sem ele, converta o material para `.md` ou `.txt`.
+### Windows: app do Claude com WSL (recomendado)
+
+1. **Instale o WSL**, o Linux dentro do Windows. Abra o PowerShell **como administrador**, rode `wsl --install` e reinicie o computador. Na primeira vez que abrir o Ubuntu, crie um usuário e uma senha.
+2. **Prepare o Ubuntu.** No terminal do Ubuntu:
+
+   ```bash
+   sudo apt update && sudo apt install -y git python3 poppler-utils
+   git clone https://github.com/amonzera/tutor.git ~/tutor
+   ```
+
+3. **Abra o tutor no app.** No app do Claude, aba **Code**: abra o seletor de ambiente, escolha **WSL** e a distribuição **Ubuntu**, e selecione a pasta `~/tutor` (aparece como `/home/<seu-usuário>/tutor`). Aceite a confiança na pasta.
+
+Nesse modo, o Claude Code roda dentro do Ubuntu, com os comandos e caminhos do Linux. As sessões WSL do app não têm terminal integrado: quando precisar de um comando no terminal (como `banco exportar`), use o terminal do Ubuntu.
+
+**Computador da empresa:** o administrador pode ter desativado as sessões WSL. Nesse caso, abra a pasta `\\wsl.localhost\Ubuntu\home\<seu-usuário>\tutor` numa sessão local, com o [Git for Windows](https://git-scm.com/download/win) instalado. O `bin/tutor.sh` percebe o caminho e usa o Python e o `pdftotext` do Ubuntu; cada comando fica um pouco mais lento.
+
+**Windows sem WSL** (não testado): clone o repositório no Windows e instale o Git for Windows e o Python do python.org (o atalho `python3` da Microsoft Store não serve e é pulado). Sem o poppler, converta os PDFs para `.md` ou `.txt`. Sem Git Bash (só PowerShell), o tutor não funciona.
+
+### Mac ou Linux
+
+Instale git, Python 3.10 ou mais novo e o poppler (Linux: `sudo apt install poppler-utils`; macOS: `brew install poppler`). Depois:
 
 ```bash
 git clone https://github.com/amonzera/tutor.git
@@ -16,27 +34,28 @@ cd tutor
 bash bin/tutor.sh ambiente      # confere Python e pdftotext
 ```
 
-### Windows
-
-O Claude Code no Windows usa o Git Bash para os comandos (instale o [Git for Windows](https://git-scm.com/download/win)). O tutor funciona de duas formas:
-
-- **Recomendado:** clone o repositório **dentro do WSL** (por exemplo, `~/tutor`) e abra essa pasta no Claude Code (no aplicativo desktop, o caminho aparece como `\\wsl.localhost\<distro>\home\<usuario>\tutor`). O `bin/tutor.sh` percebe isso e usa o Python e o `pdftotext` do próprio WSL, mesmo quando o comando sai do Git Bash do Windows.
-- Clone no Windows com o Python do python.org instalado (o atalho `python3` da Microsoft Store não serve e é pulado).
-
-Sem Git Bash (só PowerShell), o tutor não funciona.
+Abra a pasta no Claude Code (terminal, app desktop ou extensão de IDE).
 
 ## 2. Primeira vez
 
-1. Abra o Claude Code na **raiz** do repositório.
+1. Abra o Claude Code na pasta do tutor (no Windows, pelo ambiente WSL, como acima).
 2. Aceite a confiança na pasta. É isso que ativa os hooks (o resumo das matérias no início da sessão e a guarda do gabarito) e as permissões do projeto. Sem isso, cada comando pede permissão.
-3. Experimente com a matéria de exemplo: `bash bin/tutor.sh exemplo` e depois `/estudar probabilidade-basica`.
+3. Experimente com a matéria de exemplo: peça no chat "instale a matéria de exemplo" (ou rode `bash bin/tutor.sh exemplo` no terminal) e depois `/estudar probabilidade-basica`.
 
-Modelo: o tutor funciona com qualquer modelo do Claude Code; para conduzir as sessões, um modelo grande com esforço alto dá respostas melhores (`/model` e `/effort`). Os agentes já vêm com modelo e esforço próprios (veja a seção 9).
+Modelo: o tutor funciona com qualquer modelo do Claude Code; para conduzir as sessões, um modelo grande com esforço alto dá respostas melhores (`/model` e `/effort`). Os agentes já vêm com modelo e esforço próprios (veja a seção 11).
 
-## 3. Criar uma matéria
+## 3. Que matérias funcionam
 
-1. Crie `subjects/<nome>/fontes/` com um nome curto, sem acento nem espaço (`calculo-2`).
-2. Coloque o material em `fontes/`: PDFs, anotações `.md` ou `.txt`, slides exportados em PDF.
+| Situação | Exemplos |
+|---|---|
+| Funciona bem | Matérias estudadas por texto e cobradas com questões de múltipla escolha, numéricas ou abertas: exatas, biológicas, humanas, direito, concursos. |
+| Funciona com limites | Fórmulas em PDF podem sair embaralhadas na extração; figuras viram descrição em texto; em programação, a correção não executa código; em idiomas, a revisão é por conceito, não por palavra. |
+| Não atende | PDF escaneado (o tutor não faz OCR), `.docx` e `.pptx` (exporte para PDF), áudio e vídeo, habilidades práticas. |
+
+## 4. Criar uma matéria
+
+1. Crie `subjects/<nome>/fontes/` com um nome curto, sem acento nem espaço (`calculo-2`). No Windows, abra `\\wsl.localhost\Ubuntu\home\<seu-usuário>\tutor\subjects` no Explorador de Arquivos, crie as pastas e copie o material.
+2. Coloque o material em `fontes/`: PDFs com texto, anotações `.md` ou `.txt`, slides exportados em PDF.
 3. **Provas antigas, listas com gabarito e resoluções vão em `fontes/provas/`.** O texto delas fica numa área protegida: o tutor usa as questões, mas não vê a resposta antes de você.
 4. Rode `/nova-materia <nome>`.
 
@@ -54,14 +73,14 @@ Pode levar algum tempo e consumir bastante uso do seu plano, porque envolve vár
 
 Já sabe as respostas? Passe na linha de comando: `/nova-materia calculo-2 prova em 2026-12-01, 10 questões de múltipla escolha, 120 minutos, 45 minutos por dia, nível intermediário`.
 
-## 4. Estudar todo dia: `/estudar`
+## 5. Estudar todo dia: `/estudar`
 
 Sem argumento, usa a última matéria (ou a única). A sessão:
 
 1. retoma pelo checkpoint (`estado/proximo-passo.md`) e pelo diário;
-2. pergunta o tempo disponível e a sua energia;
+2. pergunta o tempo disponível e a sua energia (1 a 5); com energia baixa, a sessão fica mais leve;
 3. resolve pendências (erros sem classificação) e faz as revisões vencidas, de memória;
-4. segue o foco do dia no plano (ou o seu conceito mais fraco);
+4. segue o foco do dia no plano (ou o seu conceito mais fraco); conceito novo começa com um exemplo resolvido;
 5. em cada questão: você responde **e** diz a confiança (1 a 5) antes de qualquer ajuda; se não souber, recebe dicas em escada (conceito, ferramenta, primeiro passo, solução); depois vem a correção, que explica por que a alternativa que você escolheu é tentadora;
 6. no fim, você explica o conceito com as suas palavras;
 7. o tutor agenda as revisões e registra o checkpoint.
@@ -82,7 +101,28 @@ Erros com confiança 4 ou 5 viram prioridade: indicam uma ideia errada, não fal
 
 `conceito` (ideia errada), `metodo` (escolheu a ferramenta errada), `sinal` (sinal ou sentido), `conta` (aritmética), `chute` (respondeu sem saber). Dá para criar tipos próprios: `bash bin/tutor.sh configurar --materia <slug> --tipo-erro-extra sintaxe`.
 
-## 5. Outras skills
+## 6. Uma semana até a prova
+
+Exemplo gerado pelo próprio tutor com a matéria de exemplo: prova numa segunda-feira, 40 minutos por dia e o padrão de 6 dias de estudo por semana (domingo livre).
+
+| Dia | O que o plano manda | Comando |
+|---|---|---|
+| Seg (D-7) | diagnóstico + contagem, espaço amostral, probabilidade clássica, eventos | `/estudar` |
+| Ter (D-6) | revisões + regra da soma, valor esperado, probabilidade condicional | `/estudar` |
+| Qua (D-5) | revisões + independência, regra do produto, binomial | `/estudar` |
+| Qui (D-4) | revisões + probabilidade total, Bayes | `/estudar` |
+| Sex (D-3) | simulado em tempo de prova + revisões do dia | `/simulado` e `/revisar` |
+| Sáb (D-2) | revisão geral e pontos fracos | `/estudar`; se quiser, `/erros` e `/quiz` |
+| Dom (D-1) | nada novo; só revisões curtas de memória (as últimas caem aqui) | `/revisar` |
+| Seg | prova | |
+
+As revisões se espalham sozinhas: um conceito estudado na segunda volta na terça, na quarta, na sexta e no domingo; um da quinta volta na sexta, no sábado e no domingo. Nada é agendado depois da véspera.
+
+- Com a prova mais distante, as semanas anteriores seguem o padrão de segunda a quinta (conceitos novos e revisões), e a reta final é igual.
+- Com 7 dias de estudo por semana (`bash bin/tutor.sh configurar --materia <slug> --dias-semana 7`), a reta final tem simulado completo na D-3, reforço pelos erros do simulado na D-2 e simulado leve na D-1.
+- A qualquer momento: `/progresso` para ver como está; `/plano` se perder um dia ou a data mudar.
+
+## 7. Outras skills
 
 | Skill | Para quê |
 |---|---|
@@ -96,7 +136,7 @@ Erros com confiança 4 ou 5 viram prioridade: indicam uma ideia errada, não fal
 | `/plano` | Replaneja quando a data ou o tempo diário mudam. |
 | `/erros` | Caderno de erros: as armadilhas em que você cai com frequência. |
 
-## 6. Arquivos da matéria
+## 8. Arquivos da matéria
 
 Tudo fica em `subjects/<slug>/` e você pode ler (exceto os protegidos). Os principais:
 
@@ -108,13 +148,13 @@ Tudo fica em `subjects/<slug>/` e você pode ler (exceto os protegidos). Os prin
 
 Quer ver o gabarito em texto? Rode no **seu** terminal: `bash bin/tutor.sh banco exportar --materia <slug> --para gabarito.json`.
 
-## 7. Várias matérias, uma matéria ou um clone por matéria
+## 9. Várias matérias, uma matéria ou um clone por matéria
 
 - **Várias matérias** (padrão): cada uma em `subjects/`; `/materias` mostra todas, e `revisao listar --todas` divide as revisões do dia entre elas, dando mais espaço à prova mais próxima.
 - **Uma matéria só:** funciona igual; `/estudar` sem argumento usa a única matéria.
 - **Um clone por matéria:** clone o repositório várias vezes, uma matéria em cada. Isola tudo, mas você atualiza cada clone separadamente (`git pull` em cada um).
 
-## 8. Atualizar o tutor
+## 10. Atualizar o tutor
 
 ```bash
 git pull
@@ -122,7 +162,7 @@ git pull
 
 Suas matérias em `subjects/` não são tocadas. Se um arquivo de dados ficar com versão mais nova que o motor, o tutor avisa.
 
-## 9. Modelos e custo
+## 11. Modelos e custo
 
 Cada agente define modelo e esforço no próprio arquivo (`.claude/agents/`). Padrões: `verificador` em Opus com esforço máximo (o erro aqui é caro); `escritor-de-questoes`, `ingestor-de-fontes` e `corretor` em Sonnet com esforço alto; `planejador` em Sonnet com esforço médio. Escritor e verificador usam modelos diferentes para errarem de forma menos parecida.
 
@@ -130,14 +170,15 @@ Para trocar por matéria, acrescente ao `materia.json`, por exemplo: `"modelos":
 
 Custos e limites dependem do seu plano. A documentação oficial explica a escolha de modelo e o efeito do esforço no consumo: [custos](https://code.claude.com/docs/en/costs) e [configuração de modelo](https://code.claude.com/docs/en/model-config).
 
-## 10. Problemas comuns
+## 12. Problemas comuns
 
 | Problema | O que fazer |
 |---|---|
-| `python_nao_encontrado` | Instale o Python 3.10+; no Windows, abra a pasta pelo WSL. |
-| `sem_pdftotext` | Instale o poppler ou converta o PDF para `.txt`. |
+| `python_nao_encontrado` | Instale o Python 3.10+; no Windows, use o ambiente WSL do app. |
+| `sem_pdftotext` | Instale o poppler (`sudo apt install poppler-utils` no Ubuntu) ou converta o PDF para `.txt`. |
 | PDF sem texto (escaneado) | O tutor não faz OCR; use outro programa para gerar o texto. |
-| Cada comando pede permissão | Aceite a confiança na pasta (feche e abra o Claude Code na raiz). |
+| Cada comando pede permissão | Aceite a confiança na pasta (feche e abra o Claude Code na pasta do tutor). |
+| O app não oferece o ambiente WSL | Confira se o WSL 2 e o Ubuntu estão instalados; em computador da empresa, use o plano B da seção 1. |
 | "Nome de matéria inválido" | Renomeie a pasta para o nome sugerido (sem acento, sem espaço). |
 | `materia_ambigua` | Diga a matéria: `/estudar <slug>`. |
 | A guarda negou um comando | É esperado para buscas recursivas em `subjects/` e leitura de arquivos protegidos. Use `bash bin/tutor.sh buscar`. |

@@ -5,7 +5,7 @@ Aqui ficam as suas matérias, uma pasta por matéria. **Nada desta pasta vai par
 ## Como criar uma matéria
 
 1. Crie uma pasta com um nome curto, sem acentos nem espaços, por exemplo `calculo-2`.
-2. Dentro dela, crie `fontes/` e coloque o material: PDFs, anotações em Markdown ou texto, slides exportados em PDF, listas de exercícios.
+2. Dentro dela, crie `fontes/` e coloque o material: PDFs com texto (o tutor não lê PDF escaneado), anotações em Markdown ou texto, slides exportados em PDF, listas de exercícios.
 3. Provas antigas, listas com gabarito e resoluções vão em `fontes/provas/`. O texto delas fica numa área protegida, para o tutor não ver a resposta antes de você tentar.
 4. Abra o Claude Code na raiz do repositório e rode `/nova-materia calculo-2`.
 
