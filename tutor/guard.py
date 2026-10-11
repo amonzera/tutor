@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shlex
 import sys
@@ -61,6 +62,7 @@ DANGEROUS_VARIABLES = {
 EXPORTERS = {"export", "declare", "typeset", "readonly", "local"}
 FILE_READERS = {"cat", "head", "tail", "less", "more", "grep", "egrep", "rg", "awk", "sed", "strings", "xxd", "od", "base64"}
 ENGINE_SCRIPT_NAMES = {"bin/tutor.sh", "./bin/tutor.sh"}
+WSL_UNC = re.compile(r"//(?:wsl\.localhost|wsl\$)/[^/]+(/.*)?", re.IGNORECASE)
 
 REASON_VERIFIER = (
     "O verificador resolve às cegas: só pode rodar `bash bin/tutor.sh apresentar ... --modo verificacao`, "
@@ -171,9 +173,41 @@ def _is_recursive_search(segment: list[str]) -> bool:
     return False
 
 
+def _native(text: str) -> str:
+    """Troca barras invertidas e o prefixo UNC do WSL, que o aplicativo do Windows usa, pelo caminho local."""
+    text = text.replace("\\", "/")
+    match = WSL_UNC.fullmatch(text)
+    if match and os.name != "nt":
+        text = match.group(1) or "/"
+    return os.path.expanduser(text)
+
+
+def _local_path(token: str, cwd: str) -> Path | None:
+    """Caminho absoluto do token no sistema onde o motor roda, ou None quando não dá para saber."""
+    path = Path(_native(token))
+    if not path.is_absolute():
+        base = Path(_native(cwd)) if cwd else None
+        if base is None or not base.is_absolute():
+            return None
+        path = base / path
+    return path
+
+
+def _covers_data(token: str, cwd: str) -> bool:
+    """O caminho é a raiz do repositório ou uma pasta acima dela (logo, inclui subjects/ e examples/)."""
+    path = _local_path(token, cwd)
+    if path is None:
+        return False
+    try:
+        root, target = repo_root().resolve(), path.resolve()
+    except (OSError, RuntimeError):
+        return False
+    return target == root or target in root.parents
+
+
 def _reaches_data(scope: list[str], cwd: str) -> bool:
-    cwd = cwd.replace("\\", "/").lower()
-    inside = "/subjects" in cwd or "/examples" in cwd
+    lowered_cwd = cwd.replace("\\", "/").lower()
+    inside = "/subjects" in lowered_cwd or "/examples" in lowered_cwd
     if not scope:
         return True  # sem caminho: diretório atual (raiz ou dentro de subjects/)
     for token in scope:
@@ -183,6 +217,8 @@ def _reaches_data(scope: list[str], cwd: str) -> bool:
         if "/subjects" in path or "/examples" in path:
             return True
         if inside and not path.startswith("/"):
+            return True
+        if _covers_data(token, cwd):
             return True
     return False
 
