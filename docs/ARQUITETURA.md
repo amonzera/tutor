@@ -73,7 +73,7 @@ Um ponto de entrada (`python -m tutor`, chamado por `bash bin/tutor.sh`), subcom
 | `core` | Erros, relógio injetável (`TUTOR_HOJE`, `TUTOR_AGORA`), caminhos seguros, escrita atômica, `schema_version`, codificação em repouso. |
 | `cli` | argparse; erros de uso também saem em JSON. Subcomandos de contexto (`materias`, `contexto`, `inicio-sessao`, `ambiente`, `guarda`) sempre terminam com código 0, porque uma injeção `!` que falha aborta a skill. |
 | `subjects` | Listagem, criação e configuração, `contexto`, `checkpoint`, `validar`, `exemplo`, hook de início. |
-| `ingest` | Inventário, ingestão (PDF via `pdftotext`, Markdown, texto), `texto`, `buscar`, `renderizar`. |
+| `ingest` | Inventário, ingestão (PDF via `pdftotext`, Markdown, texto), `texto`, `buscar`, `renderizar`, `recortar`. |
 | `knowledge_map` | Validação do mapa (ids, pré-requisitos, ciclos, fontes), ordem topológica e ordem da trilha. |
 | `bank` | Banco, gabarito, apresentação em texto, conferência de respostas, importação, verificação cega. |
 | `attempts` | Máquina de estados da tentativa e simulado com correção adiada. |

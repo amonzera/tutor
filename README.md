@@ -41,7 +41,7 @@ Matérias estudadas por texto e cobradas com questões. Não funciona com PDF es
 | Skill | Para quê |
 |---|---|
 | `/materias` | Matérias, dias até a prova, revisões vencidas. |
-| `/nova-materia <pasta>` | Prepara uma matéria nova (retoma se for interrompido). |
+| `/nova-materia <pasta>` | Prepara uma matéria nova (retoma se for interrompido). Com `figuras`, só recorta as figuras de prova. |
 | `/estudar [matéria]` | Sessão diária completa. |
 | `/revisar` | Só as revisões do dia, de memória. |
 | `/quiz [matéria] [tema]` | Cinco questões intercaladas. |

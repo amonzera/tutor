@@ -67,6 +67,7 @@ As revisões se espalham sozinhas ao longo da semana e param na véspera. A tril
 |---|---|
 | `/materias` | Lista as matérias, dias até a prova e revisões do dia. |
 | `/nova-materia <pasta>` | Prepara uma matéria nova. |
+| `/nova-materia <pasta> figuras` | Recorta as figuras das questões de prova numa matéria já pronta. |
 | `/estudar [matéria]` | Sessão diária completa. |
 | `/revisar` | Só as revisões do dia, de memória. |
 | `/quiz [matéria] [tema]` | Cinco questões rápidas. |
@@ -82,7 +83,7 @@ As revisões se espalham sozinhas ao longo da semana e param na véspera. A tril
 | Situação | Exemplos |
 |---|---|
 | Funciona bem | Matérias estudadas por texto e cobradas com questões: exatas, biológicas, humanas, direito, concursos. |
-| Funciona com limites | Fórmulas e figuras de PDF, programação, idiomas. |
+| Funciona com limites | Figuras de prova (recortadas do PDF quando não há cor de marca na área; senão, redesenhadas a partir da descrição), programação, idiomas. |
 | Não funciona | PDF escaneado, `.docx` e `.pptx` (exporte para PDF), áudio, vídeo, habilidades práticas. |
 
 ## 8. Problemas comuns
