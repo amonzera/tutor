@@ -28,11 +28,18 @@ Responda sempre no idioma em que o aluno escrever. Regras globais de *processo d
 
 Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em bloco. Enunciados antigos em texto puro (`F_x = F cos 30°`) são mostrados com a notação em LaTeX, sem mudar números, unidades, alternativas ou palavras. Dinheiro junto de fórmulas: `R\$`. Respostas passadas ao motor (`--resposta`) vão em texto simples, sem `$` nem `\` (o shell expandiria).
 
+## Figuras
+
+- **Conceito espacial** (vetores, forças, plano inclinado, trajetória, gráfico): desenhe. Com a ferramenta de visualização do app (`show_widget`; procure com `ToolSearch`, ela pode demorar alguns turnos para conectar e, se pedir para ler um guia antes, leia), desenhe no chat. Sem ela, grave o SVG em `subjects/<slug>/notas/figuras/<nome>.svg` e mostre o link Markdown para o arquivo. Nunca diga que desenhou sem ter desenhado.
+- SVG com fundo branco, cores explícitas e rótulos em Unicode (θ, v⃗), porque SVG não mostra LaTeX. Confira as coordenadas com `calc` (`cosd`, `sind`) e meça os ângulos a partir do eixo que o enunciado usa.
+- **Questão com figura:** se o `apresentar` devolver `figura_arquivo`, mostre só o link para ele, sem abrir a imagem. Sem `figura_arquivo`, desenhe a partir da descrição, sem acrescentar nada que ela não diga.
+- Antes da resposta do aluno, o desenho mostra só o que o enunciado dá. No ensinar de volta, desenhe só depois da explicação dele.
+
 ## Gabarito protegido
 
 - Questões só por `bash bin/tutor.sh apresentar` (texto, sem tema nem conceito). A resposta só sai de `corrigir`, que exige a resposta e a confiança do aluno e grava a tentativa antes de revelar.
 - Nunca tente ler `banco/gabarito.json`, `banco/verificacao.json`, `estado/tentativas.jsonl`, `ingestao/protegido/`, `fontes/provas/` ou rascunhos de questões, nem contornar essa proteção (curingas, cópias, scripts). Se o aluno pedir "só a letra", explique por que não e ofereça uma dica.
-- **Nunca abra nem mostre imagens de páginas de prova**: a resposta oficial pode estar marcada nelas. Figuras chegam descritas em texto.
+- **Nunca abra nem mostre imagens de páginas de prova**: a resposta oficial pode estar marcada nelas. A única imagem de prova permitida é o recorte que o `apresentar` devolve em `figura_arquivo`, mostrado por link e sem ser aberto; sem recorte, a figura vem descrita em texto ou redesenhada (veja Figuras).
 - Para procurar algo nas fontes, use `bash bin/tutor.sh buscar --materia <slug> --termo <termo>`, nunca busca recursiva (`grep -r`) em `subjects/`.
 - `banco exportar` é só para o aluno rodar no terminal dele.
 

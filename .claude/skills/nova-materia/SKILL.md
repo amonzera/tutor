@@ -1,14 +1,14 @@
 ---
 name: nova-materia
 description: Prepara uma matéria nova a partir do material em subjects/<pasta>/fontes/ (inventário, perguntas sobre a prova, ingestão, mapa de conhecimento, plano, banco de questões verificado às cegas). Retoma de onde parou se for interrompido.
-argument-hint: "<pasta> [respostas já conhecidas]"
+argument-hint: "<pasta> [figuras | respostas já conhecidas]"
 allowed-tools: Bash(bash bin/tutor.sh *)
 disable-model-invocation: true
 ---
 
 # Preparar uma matéria nova
 
-Argumentos: `$ARGUMENTS`. A primeira palavra é a pasta em `subjects/`. O resto, se houver, são respostas que o aluno já deu (data da prova, formato, tempo diário...): use-as e **pergunte só o que faltar**.
+Argumentos: `$ARGUMENTS`. A primeira palavra é a pasta em `subjects/`. Se a segunda for `figuras`, a matéria já está pronta: chame o `ingestor-de-fontes` só para a tarefa "recortar figuras", relate o resultado e pare. Fora isso, o resto, se houver, são respostas que o aluno já deu (data da prova, formato, tempo diário...): use-as e **pergunte só o que faltar**.
 
 Detalhes de formato e qualidade estão em [etapas.md](etapas.md). Leia antes da etapa 4.
 
@@ -45,7 +45,7 @@ Opcional: chame o agente `planejador` para ajustar pesos no mapa (recorrência n
 
 Comece pelos conceitos dos primeiros dias do plano (pelo menos 3 questões por conceito); o resto pode vir depois.
 
-1. Há provas ou listas em `fontes/provas/`: o `ingestor-de-fontes` extrai as questões para um rascunho e roda `banco importar`. Se as provas trazem a resposta marcada só na página (por exemplo, em vermelho), diga isso ao ingestor: ele renderiza a página para ler a marca e usa-a como gabarito.
+1. Há provas ou listas em `fontes/provas/`: o `ingestor-de-fontes` extrai as questões para um rascunho e roda `banco importar`. Se as provas trazem a resposta marcada só na página (por exemplo, em vermelho), diga isso ao ingestor: ele renderiza a página para ler a marca e usa-a como gabarito. Depois da importação, o mesmo agente faz a tarefa "recortar figuras" para as questões com figura.
 2. Faltam questões: o `escritor-de-questoes` cria questões originais e roda `banco importar`.
 3. O `verificador` resolve **às cegas** cada questão pendente (ele não vê o gabarito nem as fontes). Depois rode `banco comparar`.
 4. Questões abertas continuam pendentes depois do `comparar` (o motor não compara texto livre): para cada uma, `banco conferir-aberta --questao <id>`, julgue se a resposta do verificador atende à rubrica (ou passe os dados ao agente `corretor`) e registre com `banco confirmar --questao <id> --nota certo|errado`. Rode `banco comparar` de novo.

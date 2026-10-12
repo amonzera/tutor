@@ -38,7 +38,7 @@ Siga o `llm_directive` do motor:
 
 Os conceitos de hoje são os próximos da trilha, na ordem: `plano_hoje.conceitos` (sem plano para hoje, `trilha.proximos`). Não pule nenhum: o que não terminar hoje continua na próxima sessão. Para cada conceito:
 
-1. **Explique antes de perguntar**, se o aluno é iniciante ou o conceito é novo para ele: explicação curta com base nas fontes (`buscar`, `texto`; cite arquivo e página) e um exemplo resolvido parecido com as questões. Se ele já sabe fazer, um resumo de duas ou três linhas e problema primeiro.
+1. **Explique antes de perguntar**, se o aluno é iniciante ou o conceito é novo para ele: explicação curta com base nas fontes (`buscar`, `texto`; cite arquivo e página) e um exemplo resolvido parecido com as questões. Se ele já sabe fazer, um resumo de duas ou três linhas e problema primeiro. Conceito espacial vem com desenho (seção Figuras do `CLAUDE.md`).
 2. Rode `trilha estudado --materia <slug> --conceito <id>`.
 3. Questões com `proximas --conceito <id>`, que vêm da mais fácil para a mais difícil. Em cada uma: `apresentar` → resposta e confiança → escada de dicas, se ele não souber → `corrigir` (com `--dicas`) → feedback → `classificar`, se errou. São necessárias pelo menos 2 respostas (fora "não sei") para o conceito ficar concluído. Confira números com `calc` antes de afirmá-los.
 
