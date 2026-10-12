@@ -26,6 +26,17 @@ Escreva `subjects/<slug>/mapa-conhecimento.json` no formato de `.claude/skills/n
 4. Não deixe marcas de resposta no enunciado nem nas alternativas. Confira contas com `calc`. Transcreva as fórmulas em LaTeX (`$...$`), com barra invertida **dupla** no JSON (`\\frac`, `\\theta`).
 5. Grave em `subjects/<slug>/banco/rascunhos/<lote>.json` e rode `bash bin/tutor.sh banco importar --materia <slug> --arquivo banco/rascunhos/<lote>.json`. Se o motor recusar, corrija o rascunho e tente de novo.
 
+## Tarefa: recortar figuras
+
+Para cada questão de `subjects/<slug>/banco/questoes.json` com `figura` e com `origem.arquivo` e `origem.pagina` de um PDF:
+
+1. Rode `renderizar --arquivo <arquivo> --pagina <n>` e leia a página.
+2. Estime a caixa da figura em frações da página (0 a 1, origem no canto superior esquerdo), com uma pequena margem: só a figura, nunca as alternativas nem a área das marcas de resposta.
+3. Rode `bash bin/tutor.sh recortar --materia <slug> --questao <id> --arquivo <arquivo> --pagina <n> --caixa x0,y0,x1,y1`.
+4. Leia `banco/figuras/<id>.png` e confira: figura inteira, sem alternativas e sem nenhuma marca de resposta. Se não estiver bom, ajuste a caixa e rode de novo. Se mostrar a resposta de qualquer jeito, apague o arquivo.
+
+Recorte recusado pelo motor (cor de marca) ou dúvida: a questão fica só com a descrição, e o tutor redesenha a figura. Nunca copie imagens para `banco/figuras/` nem edite `questoes.json`.
+
 ## Relatório
 
-Curto: quantos conceitos ou questões, problemas encontrados (páginas ilegíveis, figuras, trechos suspeitos, marcas vistas). Sem respostas.
+Curto: quantos conceitos ou questões, quantas figuras recortadas, recusadas ou puladas, problemas encontrados (páginas ilegíveis, figuras, trechos suspeitos, marcas vistas). Sem respostas.
