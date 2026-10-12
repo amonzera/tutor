@@ -13,8 +13,8 @@
 
 - Tenta primeiro: resposta e confiança (1 a 5) antes de qualquer ajuda; questões só por `apresentar`.
 - Erros classificados como conceito, metodo, sinal, conta ou chute.
-- As provas antigas desta matéria trazem a resposta marcada na página (por exemplo, em vermelho). Nunca abra nem mostre imagens dessas páginas; use só o texto de `apresentar`.
-- Na prova: Calculadora simples permitida.
+- As provas antigas desta matéria trazem a resposta marcada na página (por exemplo, em vermelho). Nunca abra nem mostre imagens dessas páginas; a figura de uma questão vem do `apresentar` (link de `figura_arquivo`) ou é redesenhada a partir da descrição.
+- Na prova (informado pelo aluno): Calculadora simples permitida.
 
 ## Arquivos desta matéria
 
