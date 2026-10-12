@@ -17,7 +17,7 @@ O objetivo é impedir que a resposta apareça **por acidente** antes da sua tent
 2. Gabarito, respostas do verificador e texto das provas ficam codificados (zlib + base64). Isso não é criptografia: serve para não serem lidos por acidente.
 3. Regras de permissão negam ao Claude a leitura desses arquivos.
 4. Uma guarda (hook) bloqueia buscas recursivas nas suas matérias, leitura de rascunhos, o comando de exportação pelo agente e truques de shell conhecidos (comandos escondidos atrás de `#` ou de quebras de linha, variáveis como `BASH_ENV`). O verificador de questões só consegue rodar três comandos exatos.
-5. O protocolo do tutor manda recusar pedidos de "só a letra" e nunca mostrar imagens de páginas de prova. A única imagem de prova que você vê é o recorte da figura, por link: o motor recusa o recorte quando há vermelho, rosa, laranja ou magenta na área, e o agente que recorta confere a imagem.
+5. O protocolo do tutor manda recusar pedidos de "só a letra" e nunca mostrar imagens de páginas de prova. A única imagem de prova que você vê é o recorte da figura, por link.
 
 O que essas camadas **não** impedem:
 
@@ -25,7 +25,7 @@ O que essas camadas **não** impedem:
 - Um script qualquer ler os arquivos (a codificação é reversível de propósito).
 - Variações de comando que a guarda não conhece. A guarda é uma rede a mais, não uma lista completa.
 - O tutor resolver a questão sozinho e deixar escapar a resposta numa explicação. Isso é tratado por instrução e medido pelos evals, mas pode acontecer.
-- Uma marca de resposta de outra cor (azul, preta, amarela), um círculo preto ou uma prova escaneada passam pela trava de cor do recorte. Nesses casos, a proteção é o agente conferir a imagem.
+- O recorte da figura pode trazer a marca da resposta oficial, quando ela está junto da figura. É uma escolha: em questões de cálculo, o que importa é chegar ao resultado.
 - O gabarito da matéria de exemplo é público (está no repositório), como qualquer arquivo versionado.
 - Limites conhecidos da implementação: PDFs enormes são lidos inteiros pelo `pdftotext` (memória); argumentos com aspas dentro de aspas podem ser repartidos ao passar do Git Bash do Windows para o WSL; com `TUTOR_MATERIAS_DIR` apontando para fora do repositório (uso de desenvolvimento), as regras de busca da guarda não reconhecem a pasta.
 
@@ -63,6 +63,6 @@ O tutor é para aprender. Não o use para responder avaliações valendo nota em
 | Resposta revelada antes da tentativa | `corrigir` exige o compromisso; protocolo; evals | O modelo pode errar no protocolo |
 | Questão gerada errada | Verificação às cegas por outro modelo; divergentes saem de uso | Dois modelos podem errar igual |
 | Injeção de instruções pelas fontes | Fontes como dados; alertas; `claudeMdExcludes`; inventário recusa configurações | Detecção heurística |
-| Imagem de página de prova com a resposta marcada | Só o recorte da figura, com trava de cor e conferência do ingestor; guarda; renderização e recorte só para o ingestor | Marca de outra cor passa; o aluno pode abrir o PDF |
+| Imagem de página de prova com a resposta marcada | Só o recorte da figura, por link; guarda; renderização e recorte só para o ingestor | O recorte pode trazer a marca, se ela estiver junto da figura; o aluno pode abrir o PDF |
 | Falsa precisão do painel | Faixas de incerteza; cobertura mínima para o preparo | Parâmetros heurísticos |
 | Dados perdidos | Escrita atômica; registros só de acréscimo | Sem backup automático: versione num repositório privado |

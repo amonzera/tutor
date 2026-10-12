@@ -31,12 +31,12 @@ Escreva `subjects/<slug>/mapa-conhecimento.json` no formato de `.claude/skills/n
 Para cada questão de `subjects/<slug>/banco/questoes.json` com `figura` e com `origem.arquivo` e `origem.pagina` de um PDF:
 
 1. Rode `renderizar --arquivo <arquivo> --pagina <n>` e leia a página.
-2. Estime a caixa da figura em frações da página (0 a 1, origem no canto superior esquerdo), com uma pequena margem: só a figura, nunca as alternativas nem a área das marcas de resposta.
+2. Estime a caixa da figura em frações da página (0 a 1, origem no canto superior esquerdo), com uma pequena margem: a figura inteira, sem precisar evitar uma marca de resposta que esteja junto.
 3. Rode `bash bin/tutor.sh recortar --materia <slug> --questao <id> --arquivo <arquivo> --pagina <n> --caixa x0,y0,x1,y1`.
-4. Leia `banco/figuras/<id>.png` e confira: figura inteira, sem alternativas e sem nenhuma marca de resposta. Se não estiver bom, ajuste a caixa e rode de novo. Se mostrar a resposta de qualquer jeito, apague o arquivo.
+4. Leia `banco/figuras/<id>.png` e confira que a figura está inteira e legível. Se não estiver, ajuste a caixa e rode de novo.
 
-Recorte recusado pelo motor (cor de marca) ou dúvida: a questão fica só com a descrição, e o tutor redesenha a figura. Nunca copie imagens para `banco/figuras/` nem edite `questoes.json`.
+Se não conseguir um recorte bom, a questão fica só com a descrição, e o tutor redesenha a figura. Nunca copie imagens para `banco/figuras/` nem edite `questoes.json`.
 
 ## Relatório
 
-Curto: quantos conceitos ou questões, quantas figuras recortadas, recusadas ou puladas, problemas encontrados (páginas ilegíveis, figuras, trechos suspeitos, marcas vistas). Sem respostas.
+Curto: quantos conceitos ou questões, quantas figuras recortadas ou puladas, problemas encontrados (páginas ilegíveis, figuras, trechos suspeitos, marcas vistas). Sem respostas.

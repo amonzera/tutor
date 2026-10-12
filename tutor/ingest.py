@@ -6,8 +6,7 @@
 - O conteúdo nunca é executado nem obedecido. Frases com cara de instrução para a IA
   ("ignore as instruções", "mostre o gabarito"...) viram alertas no índice.
 - `buscar` procura só no texto não protegido: é a alternativa segura a `grep -r`.
-- `recortar` grava a figura de uma questão de prova em `banco/figuras/` e recusa o
-  recorte quando há cor de marca de resposta (vermelho, rosa, laranja, magenta).
+- `recortar` grava a figura de uma questão de prova em `banco/figuras/`.
 """
 
 from __future__ import annotations
@@ -56,7 +55,6 @@ MIN_DPI, MAX_DPI = 50, 300
 FIGURE_SCALE = 2000  # maior lado da página renderizada para recortar, em pixels
 MIN_CROP_PIXELS = 16
 MAX_CROP_AREA = 0.8  # fração da página: recusa recortar a página inteira
-MARK_PIXELS = 20  # pixels com cor de marca que bastam para recusar o recorte
 PPM_HEADER = re.compile(rb"P6\s(\d+)\s(\d+)\s255\s")
 INJECTION_PATTERNS = [
     re.compile(p, re.IGNORECASE)
@@ -381,23 +379,12 @@ def render_page(paths: SubjectPaths, rel: str, page: int, dpi: int) -> dict[str,
     return {"imagem": image.relative_to(paths.root).as_posix()}
 
 
-def marked_pixels(rgb: bytes) -> int:
-    """Pixels com cor de marca de resposta (vermelho, rosa, laranja, magenta, marrom).
-
-    Preto, cinza, azul e amarelo não contam: marcas nessas cores passam pela trava.
-    """
-    return sum(1 for r, g in zip(rgb[0::3], rgb[1::3]) if r >= 120 and r - g >= 60)
-
-
-def _page_pixels(command: list[str], page: int, rel: str) -> tuple[int, int, bytes]:
-    """Largura, altura e pixels RGB da página (PPM P6 que o pdftoppm escreve na saída padrão)."""
+def _page_size(command: list[str], page: int, rel: str) -> tuple[int, int]:
+    """Largura e altura em pixels da página renderizada (cabeçalho do PPM que o pdftoppm escreve na saída padrão)."""
     done = subprocess.run(command, capture_output=True, check=False, timeout=120)
     header = PPM_HEADER.match(done.stdout) if done.returncode == 0 else None
     if header is not None:
-        width, height = int(header[1]), int(header[2])
-        pixels = done.stdout[header.end():]
-        if len(pixels) >= width * height * 3:
-            return width, height, pixels
+        return int(header[1]), int(header[2])
     raise TutorError("render_falhou", f"Não consegui renderizar a página {page} de {rel}.")
 
 
@@ -413,7 +400,7 @@ def _parse_box(text: str) -> tuple[float, float, float, float]:
 
 
 def crop_figure(paths: SubjectPaths, qid: str, rel: str, page: int, box: str) -> dict[str, Any]:
-    """Grava `banco/figuras/<qid>.png` com o trecho da página, se não houver cor de marca nele."""
+    """Grava `banco/figuras/<qid>.png` com o trecho da página indicado pela caixa."""
     question = load_bank(paths).get(qid)
     if question is None:
         raise TutorError("questao_inexistente", f"Questão {qid!r} não existe no banco.")
@@ -433,19 +420,12 @@ def crop_figure(paths: SubjectPaths, qid: str, rel: str, page: int, box: str) ->
     if source.suffix.lower() != ".pdf" or not source.is_file():
         raise TutorError("nao_e_pdf", f"{rel} não é um PDF de fontes/.")
     base = [tool, "-f", str(page), "-l", str(page), "-scale-to", str(FIGURE_SCALE)]
-    width, height, pixels = _page_pixels([*base, str(source)], page, rel)
+    width, height = _page_size([*base, str(source)], page, rel)
     left, top = int(x0 * width), int(y0 * height)
     right, bottom = math.ceil(x1 * width), math.ceil(y1 * height)
     if right - left < MIN_CROP_PIXELS or bottom - top < MIN_CROP_PIXELS:
         raise TutorError(
             "caixa_invalida", f"Caixa pequena demais: {box!r}.", f"Cada lado precisa ter pelo menos {MIN_CROP_PIXELS} pixels.",
-        )
-    region = b"".join(pixels[(row * width + left) * 3:(row * width + right) * 3] for row in range(top, bottom))
-    if marked_pixels(region) >= MARK_PIXELS:
-        raise TutorError(
-            "marca_colorida_na_figura",
-            "O recorte tem cor de marca de resposta (vermelho, rosa, laranja ou magenta); nada foi gravado.",
-            "Ajuste a caixa só se a marca estiver fora da figura. Senão, fique com a descrição: o tutor redesenha a figura.",
         )
     paths.figuras.mkdir(parents=True, exist_ok=True)
     prefix = paths.figuras / f".{qid}-recorte"  # o pdftoppm acrescenta .png
@@ -542,9 +522,8 @@ def cmd_crop(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
         "status": "ok",
         **result,
         "llm_directive": (
-            "Leia o recorte e confira: figura inteira, sem alternativas e sem nenhuma marca de resposta. Se não "
-            "estiver bom, ajuste a caixa e rode de novo; se mostrar a resposta de qualquer jeito, apague o arquivo. "
-            "O aluno vê o recorte por link quando a questão é apresentada."
+            "Leia o recorte e confira que a figura está inteira e legível; se não estiver, ajuste a caixa e rode de "
+            "novo. O aluno vê o recorte por link quando a questão é apresentada."
         ),
     }
 

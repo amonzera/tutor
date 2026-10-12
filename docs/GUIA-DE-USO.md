@@ -83,7 +83,7 @@ As revisões se espalham sozinhas ao longo da semana e param na véspera. A tril
 | Situação | Exemplos |
 |---|---|
 | Funciona bem | Matérias estudadas por texto e cobradas com questões: exatas, biológicas, humanas, direito, concursos. |
-| Funciona com limites | Figuras de prova (recortadas do PDF quando não há cor de marca na área; senão, redesenhadas a partir da descrição), programação, idiomas. |
+| Funciona com limites | Figuras de prova (recortadas do PDF ou, quando não dá, redesenhadas a partir da descrição), programação, idiomas. |
 | Não funciona | PDF escaneado, `.docx` e `.pptx` (exporte para PDF), áudio, vídeo, habilidades práticas. |
 
 ## 8. Problemas comuns
