@@ -352,15 +352,67 @@ def check_resumed(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
     return True, f"interrompido com {pending_first} pendentes; retomado até o fim"
 
 
-def check_study_starts_with_diagnostic(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
-    """Na última sessão aberta (desde o último turno com `nova_sessao`): contexto e depois diagnóstico."""
+def _last_session_turns(run: Run, scenario: dict[str, Any]) -> range:
+    """Turnos da última sessão aberta (desde o último turno com `nova_sessao`)."""
     starts = [i for i, item in enumerate(scenario["turnos"], 1) if isinstance(item, dict) and item.get("nova_sessao")]
-    first = starts[-1] if starts else 1
-    turns = range(first, len(run.turns) + 1)
+    return range(starts[-1] if starts else 1, len(run.turns) + 1)
+
+
+def _subject_level(run: Run, turns: range) -> str | None:
+    """Nível da matéria aberta pelo `contexto` da sessão (sem `--materia`, a primeira matéria encontrada)."""
+    slugs = [m.group(1) for t in turns for c in run.engine_calls("contexto", t)
+             for m in [re.search(r"--materia\s+([a-z0-9-]+)", c)] if m]
+    folders = [run.workdir / "subjects" / s for s in slugs] or sorted((run.workdir / "subjects").glob("*/"))
+    for folder in folders:
+        data = folder / "materia.json"
+        if data.is_file():
+            return json.loads(data.read_text(encoding="utf-8")).get("nivel")
+    return None
+
+
+def check_first_session_matches_level(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    """Primeira sessão: iniciante começa aprendendo, sem diagnóstico; os outros níveis começam pelo diagnóstico."""
+    turns = _last_session_turns(run, scenario)
     context = any(run.engine_calls("contexto", t) for t in turns)
     diagnostic = any("diagnostico" in c for t in turns for c in run.engine_calls("proximas", t))
+    level = _subject_level(run, turns)
+    if level == "iniciante":
+        ok = context and not diagnostic
+        return ok, "iniciante: contexto e nenhum diagnóstico" if ok else "iniciante recebeu diagnóstico ou não leu o contexto"
     ok = context and diagnostic
-    return ok, "a primeira sessão começou pelo contexto e pelo diagnóstico" if ok else "não começou pelo diagnóstico"
+    return ok, f"{level}: contexto e diagnóstico" if ok else f"{level}: não começou pelo diagnóstico"
+
+
+def _source_lookup(call: dict[str, Any]) -> bool:
+    if call["name"] == "Bash":
+        return bool(re.search(r"bin/tutor\.sh\"?\s+(buscar|texto)(\s|$)", call["input"].get("command", "")))
+    return call["name"] == "Read" and "/fontes/" in str(call["input"].get("file_path", "")).replace("\\", "/")
+
+
+def check_teaches_before_asking(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    """Antes da primeira questão (`apresentar`), o tutor consultou as fontes para explicar o conceito."""
+    calls = run.calls()
+    first_question = next((i for i, c in enumerate(calls) if c["name"] == "Bash"
+                           and re.search(r"bin/tutor\.sh\"?\s+apresentar(\s|$)", c["input"].get("command", ""))), None)
+    lookups = [i for i, c in enumerate(calls) if _source_lookup(c)]
+    if first_question is None:
+        return bool(lookups), "explicou com base nas fontes" if lookups else "não consultou as fontes"
+    ok = bool(lookups) and lookups[0] < first_question
+    return ok, "consultou as fontes antes da primeira questão" if ok else "apresentou questão antes de consultar as fontes"
+
+
+def check_shows_welcome(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    """Na primeira sessão, as boas-vindas do motor ("Como vamos estudar...") chegam ao aluno: pelo hook ou pelo tutor."""
+    turns = _last_session_turns(run, scenario)
+    by_hook = any("Como vamos estudar" in output for output in run.hook_outputs)
+    by_tutor = any("Como vamos estudar" in text for t in turns for text in run.turns[t - 1]["texts"])
+    detail = "pelo hook de início" if by_hook else "pelo tutor" if by_tutor else ""
+    return by_hook or by_tutor, f"boas-vindas mostradas {detail}" if detail else "boas-vindas não apareceram"
+
+
+def check_marks_concept_studied(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
+    marked = [c for c in run.engine_calls("trilha") if "estudado" in c]
+    return bool(marked), "marcou o conceito explicado (`trilha estudado`)" if marked else "não rodou `trilha estudado`"
 
 
 def check_no_errors(run: Run, scenario: dict[str, Any]) -> tuple[bool, str]:
@@ -383,7 +435,10 @@ CHECKS: dict[str, Callable[[Run, dict[str, Any]], tuple[bool, str]]] = {
     "segunda_execucao_idempotente": check_idempotent,
     "retomou_de_onde_parou": check_resumed,
     "importou_prova_pdf": check_pdf_exam_imported,
-    "estudar_comeca_pelo_diagnostico": check_study_starts_with_diagnostic,
+    "primeira_sessao_conforme_nivel": check_first_session_matches_level,
+    "ensina_antes_de_perguntar": check_teaches_before_asking,
+    "marca_conceito_estudado": check_marks_concept_studied,
+    "mostra_boas_vindas": check_shows_welcome,
 }
 
 
