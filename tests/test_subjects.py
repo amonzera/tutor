@@ -79,6 +79,19 @@ class SessionStartTest(TempWorkspaceCase):
         self.assertLessEqual(len(context), 1800)
         self.assertIn("e mais 28", context)
 
+    def test_first_session_welcome_reaches_the_student(self) -> None:
+        from tests.fixtures import answer_of, build_subject, qid
+        from tutor import attempts
+        from tutor.subjects import WELCOME_BEGINNER
+
+        paths = build_subject(self.subjects, self.now)
+        _, out = self.run_cli("inicio-sessao")
+        self.assertIn(WELCOME_BEGINNER, out["systemMessage"], "matéria pronta e sem tentativas")
+        attempts.present(paths, qid(1), "treino", self.now)
+        attempts.check(paths, qid(1), answer_of(1), 3, 0, 30, self.now)
+        _, out = self.run_cli("inicio-sessao")
+        self.assertNotIn(WELCOME_BEGINNER, out["systemMessage"])
+
     def test_hook_never_fails_on_broken_local_state(self) -> None:
         (self.subjects / ".local.json").write_text("{quebrado", encoding="utf-8")
         code, out = self.run_cli("inicio-sessao")
@@ -159,12 +172,52 @@ class SessionFlowTest(TempWorkspaceCase):
         self.assertIn("mapa", out["problemas"])
 
     def test_first_session_context(self) -> None:
+        from tutor.subjects import WELCOME_BEGINNER, WELCOME_OTHERS
+
         code, out = self.run_cli("contexto")
         self.assertEqual(code, 0, out)
         self.assertTrue(out["primeira_sessao"])
-        self.assertIn("diagnóstico", out["llm_directive"])
+        self.assertEqual(out["boas_vindas"], WELCOME_BEGINNER, "a fixture é de nível iniciante")
+        self.assertIn("Sem diagnóstico", out["llm_directive"])
+        self.assertNotIn("--modo diagnostico", out["llm_directive"])
+        self.assertIn("trilha estudado", out["llm_directive"])
+        self.assertEqual(out["trilha"]["total"], 4)
+        self.assertEqual(out["trilha"]["proximos"][0]["id"], "espaco-amostral")
         self.assertIn("# Matéria", out["contrato"] or "# Matéria")
         self.assertEqual(json.loads((self.subjects / ".local.json").read_text(encoding="utf-8"))["ultima_materia"], "prob")
+        self.run_cli("configurar", "--materia", "prob", "--nivel", "intermediario")
+        code, out = self.run_cli("contexto")
+        self.assertEqual(out["boas_vindas"], WELCOME_OTHERS)
+        self.assertIn("--modo diagnostico", out["llm_directive"])
+
+    def test_trail_studied(self) -> None:
+        from tests.fixtures import answer_of, qid
+        from tutor import attempts
+
+        code, out = self.run_cli("trilha", "estudado", "--materia", "prob", "--conceito", "nao-existe")
+        self.assertEqual(out["erro"], "conceito_inexistente")
+        code, out = self.run_cli("trilha", "estudado", "--materia", "prob", "--conceito", "espaco-amostral")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((out["estudado_em"], out["faltam_respostas"]), ("2026-03-02", 2))
+        for index in (1, 2):
+            attempts.present(self.paths, qid(index), "treino", self.now)
+            attempts.check(self.paths, qid(index), answer_of(index), 3, 0, 30, self.now)
+        code, out = self.run_cli("trilha", "estudado", "--materia", "prob", "--conceito", "espaco-amostral")
+        self.assertEqual(out["faltam_respostas"], 0)
+        code, out = self.run_cli("plano", "--materia", "prob")
+        self.assertEqual(out["trilha"]["concluidos"], ["espaco-amostral"])
+        code, out = self.run_cli("painel", "--materia", "prob")
+        self.assertEqual((out["trilha"]["concluidos"], out["trilha"]["total"]), (1, 4))
+        self.assertIn("Seguir a trilha: próximo conceito, Probabilidade clássica", " ".join(out["proximas_acoes"]))
+
+    def test_next_step_summary(self) -> None:
+        from tutor.subjects import _next_step_summary
+
+        self.assertEqual(_next_step_summary("# Próximo passo\n\n- Revisar Bayes.\n"), "Revisar Bayes.")
+        self.assertEqual(_next_step_summary("**Próximo passo:** fazer o simulado"), "fazer o simulado")
+        self.assertEqual(_next_step_summary("1. Começar por vetores"), "Começar por vetores")
+        self.assertEqual(_next_step_summary("# Próximo passo\n"), "não registrado")
+        self.assertEqual(len(_next_step_summary("x" * 300)), 160)
 
     def test_checkpoint_and_resume(self) -> None:
         from tests.fixtures import qid, wrong_of
@@ -180,14 +233,20 @@ class SessionFlowTest(TempWorkspaceCase):
         self.assertNotIn("aviso", out)
         self.assertIn("Questões: 1 (0 certas)", out["registro"])
         self.assertIn("classificar ['pro-003']", out["registro"])
+        self.assertIn("- Trilha: 0 de 4 conceitos concluídos", out["registro"])
+        self.assertIn("- Próximo passo: Revisar probabilidade clássica.", out["registro"])
         diary = self.paths.diario.read_text(encoding="utf-8")
-        self.assertEqual(diary.count("## 2026-03-02"), 2)
+        self.assertEqual(diary.count("## 2026-03-02"), 1, "o segundo checkpoint do dia substitui o bloco")
         self.assertTrue(self.paths.plano.is_file() and self.paths.dominio.is_file())
         code, out = self.run_cli("contexto", "--materia", "prob", when=self.now.replace(day=3))
         self.assertFalse(out["primeira_sessao"])
+        self.assertNotIn("boas_vindas", out)
         self.assertEqual(out["pendencias"]["classificar"], [qid(3)])
         self.assertIn("Revisar probabilidade clássica", out["proximo_passo"])
-        self.assertEqual(len(out["diario_recente"]), 2)
+        self.assertEqual(len(out["diario_recente"]), 1)
+        self.run_cli("checkpoint", "--materia", "prob", when=self.now.replace(day=3))
+        diary = self.paths.diario.read_text(encoding="utf-8")
+        self.assertEqual((diary.count("## 2026-03-02"), diary.count("## 2026-03-03")), (1, 1), "dia novo, bloco novo")
 
 
 class ExampleInstallTest(TempWorkspaceCase):

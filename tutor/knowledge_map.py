@@ -40,6 +40,40 @@ class KnowledgeMap:
             pending = [c for c in pending if c.id not in done]
         return order
 
+    def trail_order(self, difficulty: dict[str, float] | None = None, practicable: set[str] | None = None) -> list[str]:
+        """Ordem da trilha: pré-requisitos antes; entre os conceitos prontos, a maior prioridade primeiro.
+
+        A prioridade efetiva de um conceito é o maior peso entre ele e tudo o que ele libera, para que um
+        pré-requisito leve de um conceito pesado não fique para o fim. Desempates: peso próprio, conceitos com
+        questões antes dos sem questões, o mais difícil antes e, por fim, o id.
+        """
+        difficulty = difficulty or {}
+        effective = {cid: c.weight for cid, c in self.concepts.items()}
+        dependents: dict[str, list[str]] = {cid: [] for cid in self.concepts}
+        for concept in self.concepts.values():
+            for prereq in concept.prerequisites:
+                if prereq in dependents:
+                    dependents[prereq].append(concept.id)
+        for cid in reversed(self.topological_order()):
+            for child in dependents[cid]:
+                effective[cid] = max(effective[cid], effective[child])
+
+        def key(c: Concept) -> tuple:
+            without_questions = practicable is not None and c.id not in practicable
+            return (-effective[c.id], -c.weight, without_questions, -difficulty.get(c.id, 2.0), c.id)
+
+        order: list[str] = []
+        placed: set[str] = set()
+        remaining = dict(self.concepts)
+        while remaining:
+            ready = [c for c in remaining.values()
+                     if all(p in placed or p not in self.concepts for p in c.prerequisites)]
+            best = min(ready or remaining.values(), key=key)  # sem prontos só com ciclo, que validate() recusa
+            order.append(best.id)
+            placed.add(best.id)
+            del remaining[best.id]
+        return order
+
     def roots(self) -> list[str]:
         return [cid for cid in self.topological_order() if not self.concepts[cid].prerequisites]
 

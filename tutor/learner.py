@@ -30,6 +30,7 @@ DEFAULT_PARAMS = {
     "limiar_fraco": 0.6,
     "cobertura_minima_preparo": 0.5,
     "tentativas_para_cobertura": 2,
+    "respostas_para_concluir": 2,
 }
 SAMPLES = 2000
 
@@ -41,6 +42,21 @@ def params_from(materia: dict[str, Any] | None) -> dict[str, float]:
         if key in params and isinstance(value, (int, float)) and not isinstance(value, bool):
             params[key] = float(value)
     return params
+
+
+def practice_counts(questions: dict[str, dict[str, Any]], attempts: list[Attempt]) -> dict[str, int]:
+    """Respostas que valem como prática, por conceito: com nota, sem "não sei" e não logo depois de ver a resposta.
+
+    Questão com vários conceitos conta para todos; respostas do diagnóstico contam.
+    """
+    counts: dict[str, int] = defaultdict(int)
+    for attempt in attempts:
+        question = questions.get(attempt.id)
+        if question is None or attempt.dont_know or attempt.after_reveal or attempt.score is None:
+            continue
+        for cid in question.get("conceitos", []):
+            counts[cid] += 1
+    return dict(counts)
 
 
 def guess_probability(question: dict[str, Any]) -> float:

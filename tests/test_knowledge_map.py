@@ -8,7 +8,7 @@ import unittest
 from tests.fixtures import CONCEPTS
 from tests.helpers import TempWorkspaceCase
 from tutor.core import SubjectPaths, TutorError, write_json
-from tutor.knowledge_map import load_map, validate_map_data
+from tutor.knowledge_map import Concept, KnowledgeMap, load_map, validate_map_data
 
 
 class KnowledgeMapTest(TempWorkspaceCase):
@@ -60,6 +60,19 @@ class KnowledgeMapTest(TempWorkspaceCase):
                               ("prob-condicional", "bayes"), ("independente-pesado", "independente-leve")]:
             self.assertLess(order.index(before), order.index(after))
         self.assertAlmostEqual(sum(kmap.weights().values()), 1.0)
+
+    def test_trail_order(self) -> None:
+        def concept(cid: str, weight: float, *prereqs: str) -> Concept:
+            return Concept(cid, cid.upper(), "t", float(weight), prereqs, "fontes")
+
+        inverted = KnowledgeMap({"a": concept("a", 1), "b": concept("b", 5, "a"), "c": concept("c", 3), "d": concept("d", 3)})
+        self.assertEqual(inverted.trail_order(), ["a", "b", "c", "d"], "o pré-requisito leve herda o peso de quem ele libera")
+        tied = KnowledgeMap({"x": concept("x", 3), "y": concept("y", 3), "z": concept("z", 3)})
+        self.assertEqual(tied.trail_order({"x": 1.0, "y": 3.0, "z": 2.0}), ["y", "z", "x"], "mais difícil antes")
+        self.assertEqual(tied.trail_order(), ["x", "y", "z"], "sem dificuldade, desempata pelo id")
+        self.assertEqual(tied.trail_order(practicable={"y", "z"}), ["y", "z", "x"], "sem questões fica por último")
+        chain = KnowledgeMap({"base": concept("base", 1), "topo": concept("topo", 2, "base"), "solto": concept("solto", 5)})
+        self.assertEqual(chain.trail_order(), ["solto", "base", "topo"], "peso manda, pré-requisito sempre antes")
 
     def test_load_map_rejects_invalid(self) -> None:
         write_json(self.paths.mapa, self.data([{"id": "x"}]))
