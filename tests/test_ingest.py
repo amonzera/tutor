@@ -12,7 +12,7 @@ from tests.fixtures import build_subject, mc_draft_item, qid
 from tests.helpers import TempWorkspaceCase
 from tests.pdf_minimo import build_pdf
 from tutor.core import SubjectPaths, TutorError, write_json
-from tutor.ingest import crop_figure, ingest, inventory, marked_pixels, read_text, render_page, search
+from tutor.ingest import crop_figure, ingest, inventory, read_text, render_page, search
 
 HAS_PDFTOTEXT = shutil.which("pdftotext") is not None
 HAS_PDFTOPPM = shutil.which("pdftoppm") is not None
@@ -188,15 +188,6 @@ class PdfTest(TempWorkspaceCase):
         self.assertIn("figuras-temp", result["imagem"])
 
 
-class MarkedPixelsTest(unittest.TestCase):
-    def test_mark_colors(self) -> None:
-        def count(*colors: tuple[int, int, int]) -> int:
-            return marked_pixels(bytes(channel for color in colors for channel in color))
-
-        self.assertEqual(count((255, 0, 0), (255, 128, 0), (255, 0, 255), (255, 102, 178)), 4, "vermelho, laranja, magenta, rosa")
-        self.assertEqual(count((0, 0, 0), (128, 128, 128), (0, 0, 255), (255, 255, 0), (255, 255, 255)), 0)
-
-
 @unittest.skipUnless(HAS_PDFTOPPM, "pdftoppm não instalado")
 class CropFigureTest(TempWorkspaceCase):
     def setUp(self) -> None:
@@ -210,13 +201,9 @@ class CropFigureTest(TempWorkspaceCase):
     def crop(self, box: str) -> dict:
         return crop_figure(self.paths, qid(9), "provas/prova.pdf", 1, box)
 
-    def test_clean_crop_and_colored_mark(self) -> None:
+    def test_crop_and_invalid_boxes(self) -> None:
         target = self.paths.figuras / f"{qid(9)}.png"
-        with self.assertRaises(TutorError) as caught:
-            self.crop("0.05,0.55,0.6,0.65")
-        self.assertEqual(caught.exception.code, "marca_colorida_na_figura")
-        self.assertFalse(target.exists(), "recorte recusado não grava nada")
-        result = self.crop("0.05,0.02,0.6,0.15")
+        result = self.crop("0.05,0.02,0.6,0.65")
         self.assertEqual(result["figura"], f"banco/figuras/{qid(9)}.png")
         self.assertTrue(target.read_bytes().startswith(b"\x89PNG"))
         self.assertEqual([p.name for p in self.paths.figuras.iterdir()], [target.name], "sem temporários")
