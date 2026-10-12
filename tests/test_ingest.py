@@ -8,10 +8,11 @@ import shutil
 import sys
 import unittest
 
+from tests.fixtures import build_subject, mc_draft_item, qid
 from tests.helpers import TempWorkspaceCase
 from tests.pdf_minimo import build_pdf
 from tutor.core import SubjectPaths, TutorError, write_json
-from tutor.ingest import ingest, inventory, read_text, render_page, search
+from tutor.ingest import crop_figure, ingest, inventory, marked_pixels, read_text, render_page, search
 
 HAS_PDFTOTEXT = shutil.which("pdftotext") is not None
 HAS_PDFTOPPM = shutil.which("pdftoppm") is not None
@@ -185,6 +186,44 @@ class PdfTest(TempWorkspaceCase):
         image = self.paths.root / result["imagem"]
         self.assertTrue(image.is_file())
         self.assertIn("figuras-temp", result["imagem"])
+
+
+class MarkedPixelsTest(unittest.TestCase):
+    def test_mark_colors(self) -> None:
+        def count(*colors: tuple[int, int, int]) -> int:
+            return marked_pixels(bytes(channel for color in colors for channel in color))
+
+        self.assertEqual(count((255, 0, 0), (255, 128, 0), (255, 0, 255), (255, 102, 178)), 4, "vermelho, laranja, magenta, rosa")
+        self.assertEqual(count((0, 0, 0), (128, 128, 128), (0, 0, 255), (255, 255, 0), (255, 255, 255)), 0)
+
+
+@unittest.skipUnless(HAS_PDFTOPPM, "pdftoppm não instalado")
+class CropFigureTest(TempWorkspaceCase):
+    def setUp(self) -> None:
+        super().setUp()
+        figure = mc_draft_item("bayes", "A", 9, figura={"descricao": "Diagrama fictício com três linhas."})
+        self.paths = build_subject(self.subjects, self.now, extra_questions=[figure])
+        lines = [("Figura: linha preta", None)] * 3 + [("", None)] * 30 + [("Resposta: A", (1, 0, 0))]
+        (self.paths.fontes / "provas").mkdir()
+        (self.paths.fontes / "provas" / "prova.pdf").write_bytes(build_pdf([lines]))
+
+    def crop(self, box: str) -> dict:
+        return crop_figure(self.paths, qid(9), "provas/prova.pdf", 1, box)
+
+    def test_clean_crop_and_colored_mark(self) -> None:
+        target = self.paths.figuras / f"{qid(9)}.png"
+        with self.assertRaises(TutorError) as caught:
+            self.crop("0.05,0.55,0.6,0.65")
+        self.assertEqual(caught.exception.code, "marca_colorida_na_figura")
+        self.assertFalse(target.exists(), "recorte recusado não grava nada")
+        result = self.crop("0.05,0.02,0.6,0.15")
+        self.assertEqual(result["figura"], f"banco/figuras/{qid(9)}.png")
+        self.assertTrue(target.read_bytes().startswith(b"\x89PNG"))
+        self.assertEqual([p.name for p in self.paths.figuras.iterdir()], [target.name], "sem temporários")
+        for box in ("0,0,1,1", "0.6,0.2,0.1,0.5", "0,5,0,2"):
+            with self.subTest(box=box), self.assertRaises(TutorError) as caught:
+                self.crop(box)
+            self.assertEqual(caught.exception.code, "caixa_invalida")
 
 
 if __name__ == "__main__":

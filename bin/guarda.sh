@@ -7,7 +7,7 @@ input=$(cat)
 lower=$(printf '%s' "$input" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
   *verificador* | *gabarito* | *verificacao* | *tentativas* | *protegido* | *provas* | *rascunhos* | \
-  *figuras-temp* | *renderizar* | *exportar* | *grep* | *'rg '* | *'"rg'* | *'ag '* | *ack* | *xargs* | \
+  *figuras* | *renderizar* | *recortar* | *exportar* | *grep* | *'rg '* | *'"rg'* | *'ag '* | *ack* | *xargs* | \
   *-exec* | *-ok* | *recurse* | *bash_env* | *python* | *ld_* | *'path='* | *'env='* | *export*) ;;
   *) exit 0 ;;
 esac

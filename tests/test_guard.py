@@ -35,6 +35,11 @@ class DecideTest(unittest.TestCase):
         "copiar da área protegida": bash("cp subjects/x/ingestao/protegido/a.json /tmp/a.json"),
         "texto protegido pelo tutor": bash("bash bin/tutor.sh texto --materia x --arquivo provas/p.pdf --protegido"),
         "renderizar pelo tutor": bash("bash bin/tutor.sh renderizar --materia x --arquivo provas/p.pdf --pagina 1"),
+        "recortar pelo tutor": bash("bash bin/tutor.sh recortar --materia x --questao q1 --arquivo a.pdf --pagina 1 "
+                                    "--caixa 0.1,0.1,0.5,0.5"),
+        "recortar pelo verificador": bash("bash bin/tutor.sh recortar --materia x --questao q1", "verificador"),
+        "Read de recorte pelo tutor": {"tool_name": "Read", "tool_input": {"file_path": "/repo/subjects/x/banco/figuras/q1.png"}},
+        "copiar imagem para os recortes": bash("cp /tmp/pagina.png subjects/x/banco/figuras/q1.png"),
         "exportar pelo tutor": bash("bash bin/tutor.sh banco exportar --materia x --para /tmp/g.json"),
         "exportar com variável na frente": bash("X=1 bash bin/tutor.sh banco exportar --materia x --para g.json"),
         "leitura dentro de laço": bash("for f in a; do cat subjects/x/banco/gabarito.json; done"),
@@ -80,6 +85,10 @@ class DecideTest(unittest.TestCase):
         "mover para provas": bash("mv subjects/x/fontes/lista.md subjects/x/fontes/provas/"),
         "texto protegido pelo ingestor": bash("bash bin/tutor.sh texto --materia x --arquivo provas/p.pdf --protegido",
                                               "ingestor-de-fontes"),
+        "recortar pelo ingestor": bash("bash bin/tutor.sh recortar --materia x --questao q1 --arquivo provas/p.pdf "
+                                       "--pagina 1 --caixa 0.1,0.1,0.5,0.5", "ingestor-de-fontes"),
+        "Read de recorte pelo ingestor": {"tool_name": "Read", "agent_type": "ingestor-de-fontes",
+                                          "tool_input": {"file_path": "/repo/subjects/x/banco/figuras/q1.png"}},
         "escritor gravando rascunho": bash("ls subjects/x/banco/rascunhos", "escritor-de-questoes"),
         "Read de rascunho pelo escritor": {"tool_name": "Read", "agent_type": "escritor-de-questoes",
                                            "tool_input": {"file_path": "/repo/subjects/x/banco/rascunhos/l.json"}},
@@ -164,6 +173,11 @@ class HookScriptTest(unittest.TestCase):
                 self.assertEqual(decision["hookEventName"], "PreToolUse")
                 self.assertEqual(decision["permissionDecision"], "deny")
                 self.assertIn("buscar", decision["permissionDecisionReason"])
+                crop = bash("bash bin/tutor.sh recortar --materia x --questao q1 --arquivo apostila.pdf --pagina 1 "
+                            "--caixa 0.1,0.1,0.5,0.5")
+                self.assertIn("ingestor", self.run_hook(shell, crop), "gatilho do recortar")
+                read = {"tool_name": "Read", "tool_input": {"file_path": "/repo/subjects/x/banco/figuras/q1.png"}}
+                self.assertIn('"deny"', self.run_hook(shell, read), "gatilho das figuras")
                 self.assertEqual(self.run_hook(shell, bash("ls -la")), "", "caminho rápido: sem saída")
                 self.assertEqual(self.run_hook(shell, bash("grep -rn foo tutor")), "")
                 self.assertEqual(self.run_hook(shell, {}), "")

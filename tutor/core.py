@@ -186,6 +186,7 @@ _SUBJECT_FILES = {
     "verificacao": "banco/verificacao.json",
     "verificacao_md": "banco/verificacao.md",
     "rascunhos": "banco/rascunhos",
+    "figuras": "banco/figuras",
     "estado": "estado",
     "tentativas": "estado/tentativas.jsonl",
     "sessao": "estado/sessao.json",

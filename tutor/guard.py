@@ -9,14 +9,15 @@ Regras:
    `bash bin/tutor.sh apresentar ... --modo verificacao`, `bash bin/tutor.sh calc ...` e
    `bash bin/tutor.sh banco registrar-verificacao ...`, sem operadores, variáveis,
    comentários nem quebras de linha (lista fechada sobre o comando inteiro).
-2. Texto da área protegida (`texto --protegido`) e páginas renderizadas (`renderizar`)
-   só para o agente `ingestor-de-fontes`.
+2. Texto da área protegida (`texto --protegido`), páginas renderizadas (`renderizar`) e
+   recortes de figura (`recortar`) só para o agente `ingestor-de-fontes`.
 3. `banco exportar` é para o aluno rodar no próprio terminal, nunca para um agente.
 4. `banco registrar-verificacao` só para o verificador.
 5. Chamadas ao motor com variáveis de ambiente na frente são negadas (exceto o relógio
    de testes, TUTOR_HOJE e TUTOR_AGORA): `BASH_ENV=...` ou `PYTHONPATH=...` executariam código.
 6. Fora do motor, nenhum comando toca arquivos protegidos (gabarito, respostas do
-   verificador, tentativas, área protegida, provas, rascunhos, figuras temporárias).
+   verificador, tentativas, área protegida, provas, rascunhos, figuras). Rascunhos e
+   figuras ficam abertos aos agentes que escrevem o banco, também para leitura.
 7. Nenhuma busca recursiva (grep -r, rg, git grep, find -exec, ferramenta Grep...)
    alcança subjects/ ou examples/: use `bash bin/tutor.sh buscar`.
 
@@ -47,9 +48,9 @@ VERIFIER_COMMAND = re.compile(
 )
 PROTECTED_MARKERS = (
     "gabarito.json", "verificacao.json", "tentativas.jsonl", "ingestao/protegido", "fontes/provas",
-    "banco/rascunhos", "figuras-temp",
+    "banco/rascunhos", "figuras-temp", "banco/figuras",
 )
-WRITER_MARKERS = ("banco/rascunhos", "figuras-temp")
+WRITER_MARKERS = ("banco/rascunhos", "figuras-temp", "banco/figuras")
 OPERATOR_CHARS = set("();<>|&")
 SHELL_PREFIXES = {"do", "then", "else", "elif", "if", "while", "until", "!", "time", "command", "exec", "env", "{"}
 ASSIGNMENT = re.compile(r"([A-Za-z_][A-Za-z0-9_]*)=.*")
@@ -69,7 +70,7 @@ REASON_VERIFIER = (
     "`bash bin/tutor.sh calc ...` e `bash bin/tutor.sh banco registrar-verificacao ...`, sem operadores de shell, "
     "variáveis, comentários ou quebras de linha."
 )
-REASON_INGESTOR = "Texto protegido e páginas renderizadas são só para o agente ingestor-de-fontes."
+REASON_INGESTOR = "Texto protegido, páginas renderizadas e recortes de figura são só para o agente ingestor-de-fontes."
 REASON_EXPORT = "`banco exportar` é para o aluno rodar no próprio terminal, não para o tutor."
 REASON_REGISTER = "Só o agente verificador registra respostas às cegas (`banco registrar-verificacao`)."
 REASON_ENV = (
@@ -77,7 +78,8 @@ REASON_ENV = (
     "TUTOR_MATERIAS_DIR), e variáveis que executam código (BASH_ENV, PYTHONPATH, PATH...) não podem ser definidas."
 )
 REASON_PROTECTED = (
-    "Este comando toca um arquivo protegido (gabarito, respostas do verificador, tentativas, provas ou rascunhos). "
+    "Este comando toca um arquivo protegido (gabarito, respostas do verificador, tentativas, provas, rascunhos ou "
+    "figuras de prova). "
     "Use os subcomandos do motor (`apresentar`, `corrigir`, `painel`...)."
 )
 REASON_SEARCH = (
@@ -243,7 +245,7 @@ def _decide_verifier(tool: str, data: dict[str, Any]) -> str | None:
 def _decide_engine(args: list[str], assigned: list[str], agent: str) -> str | None:
     if any(name not in SAFE_VARIABLES for name in assigned):
         return REASON_ENV
-    if args[:1] == ["renderizar"] or (args[:1] == ["texto"] and "--protegido" in args):
+    if args[:1] in (["renderizar"], ["recortar"]) or (args[:1] == ["texto"] and "--protegido" in args):
         if agent != INGESTOR:
             return REASON_INGESTOR
     if args[:2] == ["banco", "exportar"]:
