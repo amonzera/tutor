@@ -24,6 +24,19 @@ class EvaluateTest(unittest.TestCase):
         self.assertEqual(evaluate("2^10"), 1024)
         self.assertEqual(evaluate("max(3, 7, 5)"), 7)
 
+    def test_degree_functions(self) -> None:
+        self.assertEqual(evaluate("cosd(60)"), 0.5)
+        self.assertEqual(evaluate("sind(30)"), 0.5)
+        self.assertEqual(evaluate("tand(45)"), 1.0)
+        self.assertEqual(evaluate("40*cosd(60)"), 20.0)
+        self.assertEqual(evaluate("asind(0.5)"), 30.0)
+        self.assertEqual(evaluate("acosd(0.5)"), 60.0)
+        self.assertEqual(evaluate("atand(1)"), 45.0)
+        self.assertEqual(evaluate("atan2d(1, -1)"), 135.0)
+        for expression in ("tand(90)", "tand(-270)", "asind(2)"):
+            with self.subTest(expression=expression), self.assertRaises(TutorError):
+                evaluate(expression)
+
     def test_rejects_non_arithmetic(self) -> None:
         for expression in ["__import__('os')", "open('x')", "x + 1", "(1).real", "[1, 2]", "lambda: 1",
                            "print(1)", "sqrt(x=4)", "'a' * 3", "1 if 1 else 2", "a.b"]:
@@ -51,6 +64,13 @@ class CalcCommandTest(TempWorkspaceCase):
         code, out = self.run_cli("calc", "import os")
         self.assertEqual(code, 1)
         self.assertEqual(out["erro"], "calc_invalida")
+
+    def test_radian_warning(self) -> None:
+        code, out = self.run_cli("calc", "40*cos(60)")
+        self.assertIn("radianos", out["aviso"])
+        code, out = self.run_cli("calc", "40*cosd(60)")
+        self.assertNotIn("aviso", out)
+        self.assertEqual(out["decimal"], "20")
 
 
 if __name__ == "__main__":

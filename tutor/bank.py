@@ -43,7 +43,7 @@ ID_PATTERN = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 LETTER_KEYS = "ABCDEFGHIJ"
 FORBIDDEN_KEYS = ("resposta", "gabarito", "correta", "solucao", "distratores", "answer")
 LEAK_MARKERS = re.compile(
-    r"(gabarito|resposta\s+correta|alternativa\s+correta|\(\s*correta\s*\)|\bcorreta\s*:|(?<![A-Za-z0-9])\[x\]|\u2713|\u2714)",
+    r"(gabarito|resposta\s+correta|alternativa\s+correta|\(\s*correta\s*\)|\bcorreta\s*:|(?<![A-Za-z0-9$\\])\[x\]|\u2713|\u2714)",
     re.IGNORECASE,
 )
 DEFAULT_REL_TOLERANCE = 0.01
@@ -186,10 +186,28 @@ def check_answer(question: dict[str, Any], entry: dict[str, Any], answer: str | 
 # ---------------------------------------------------------------- validação
 
 
-def _lint_text(where: str, text: Any) -> list[str]:
-    if isinstance(text, str) and LEAK_MARKERS.search(text):
-        return [f"{where}: possível marca de resposta no texto ({LEAK_MARKERS.search(text).group(0)!r})"]
+CONTROL_CHARS = re.compile(r"[\x00-\x09\x0b-\x1f]")
+DISPLAY_MATH = re.compile(r"\$\$.*?\$\$", re.DOTALL)
+INLINE_MATH = re.compile(r"\$[^$]*\$")
+
+
+def _latex_problems(where: str, text: Any) -> list[str]:
+    """LaTeX com barra invertida simples no JSON vira caractere de controle sem erro: \\frac, \\theta, \\beta, \\nu..."""
+    if not isinstance(text, str):
+        return []
+    if CONTROL_CHARS.search(text):
+        return [f"{where}: caractere de controle ou tabulação no texto (LaTeX no JSON precisa de barra dupla: \\\\frac)"]
+    inline = INLINE_MATH.findall(DISPLAY_MATH.sub("", text.replace("R$", "")))
+    if any("\n" in segment for segment in inline):
+        return [f"{where}: quebra de linha dentro de $...$ (LaTeX no JSON precisa de barra dupla: \\\\nu)"]
     return []
+
+
+def _lint_text(where: str, text: Any) -> list[str]:
+    problems = _latex_problems(where, text)
+    if isinstance(text, str) and LEAK_MARKERS.search(text):
+        problems.append(f"{where}: possível marca de resposta no texto ({LEAK_MARKERS.search(text).group(0)!r})")
+    return problems
 
 
 def validate_question(q: dict[str, Any], kmap: KnowledgeMap | None, where: str) -> list[str]:
@@ -268,6 +286,9 @@ def validate_entry(q: dict[str, Any], entry: Any, where: str) -> list[str]:
     for field in ("conceito_decisivo", "solucao"):
         if not str(entry.get(field) or "").strip():
             problems.append(f"{where}: falta '{field}' no gabarito")
+        problems += _latex_problems(f"{where}, {field}", entry.get(field))
+    for key, text in (entry.get("distratores") or {}).items() if isinstance(entry.get("distratores"), dict) else ():
+        problems += _latex_problems(f"{where}, distrator {key}", text)
     return problems
 
 

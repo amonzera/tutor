@@ -55,10 +55,25 @@ class ImportTest(TempWorkspaceCase):
         self.assertEqual(len(load_bank(self.paths)), 8)
         self.assertTrue((self.paths.rascunhos / "lote-02.json").exists(), "rascunho inválido fica para correção")
 
+    def test_latex_in_drafts(self) -> None:
+        good = mc_draft_item("bayes", "A", 95)
+        good["enunciado"] = "Calcule $\\frac{1}{2} \\cdot \\theta$, a concentração $[X]$ e o preço de R$ 10,00."
+        good["gabarito"]["solucao"] = "Como $\\beta = \\frac{a}{b}$, a resposta segue."
+        import_draft(self.paths, self._draft([good]), self.now)
+        self.assertEqual(len(load_bank(self.paths)), 9, "LaTeX bem escapado entra")
+        broken = [mc_draft_item("bayes", "B", n) for n in (96, 97, 98)]
+        broken[0]["enunciado"] = "Calcule $" + "\x0c" + "rac{1}{2}$."  # \frac com barra simples no JSON
+        broken[1]["alternativas"]["A"] = "$" + "\t" + "heta$ vale 30 graus"  # \theta
+        broken[2]["gabarito"]["solucao"] = "Use $" + "\n" + "u$ aqui."  # \nu
+        with self.assertRaises(TutorError) as caught:
+            import_draft(self.paths, self._draft(broken), self.now)
+        self.assertEqual(" | ".join(caught.exception.extra["problemas"]).count("barra dupla"), 3)
+
     def test_leak_lint_ignores_math_notation(self) -> None:
         from tutor.bank import LEAK_MARKERS
 
         self.assertIsNone(LEAK_MARKERS.search("Quanto vale E[X] para essa variável?"))
+        self.assertIsNone(LEAK_MARKERS.search("A concentração $[X]$ dobra."))
         self.assertIsNotNone(LEAK_MARKERS.search("[x] B) 1/2"))
         self.assertIsNotNone(LEAK_MARKERS.search("B) 1/2 \u2713"))
 

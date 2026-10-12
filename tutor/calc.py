@@ -67,7 +67,45 @@ def _float_fn(fn: Callable[..., float]) -> Callable[..., float]:
     return wrapper
 
 
+def _snap(value: float) -> float:
+    """Arredonda para 12 casas: cosd(60) dá 0,5, e não 0,5000000000000001."""
+    value = round(value, 12)
+    return 0.0 if value == 0 else value
+
+
+def _tand(degrees: float) -> float:
+    if math.isclose(math.remainder(degrees - 90.0, 180.0), 0.0, abs_tol=1e-9):
+        raise TutorError("calc_dominio", "tand não existe em 90° + k·180°.")
+    return _snap(math.tan(math.radians(degrees)))
+
+
+def _inverse_degrees(fn: Callable[[float], float]) -> Callable[[float], float]:
+    def wrapper(value: float) -> float:
+        try:
+            return _snap(math.degrees(fn(value)))
+        except ValueError as exc:
+            raise TutorError("calc_dominio", "Valor fora do domínio da função.") from exc
+
+    return wrapper
+
+
+DEGREE_FUNCTIONS: dict[str, Callable[..., float]] = {
+    "sind": _float_fn(lambda x: _snap(math.sin(math.radians(x)))),
+    "cosd": _float_fn(lambda x: _snap(math.cos(math.radians(x)))),
+    "tand": _float_fn(_tand),
+    "asind": _float_fn(_inverse_degrees(math.asin)),
+    "acosd": _float_fn(_inverse_degrees(math.acos)),
+    "atand": _float_fn(_inverse_degrees(math.atan)),
+    "atan2d": _float_fn(lambda y, x: _snap(math.degrees(math.atan2(y, x)))),
+}
+RADIAN_FUNCTIONS = {"sin", "cos", "tan", "asin", "acos", "atan", "atan2"}
+RADIAN_WARNING = (
+    "sin, cos e tan recebem o ângulo em radianos (e asin, acos, atan devolvem radianos). Para graus, use sind, cosd, "
+    "tand, asind, acosd, atand ou atan2d."
+)
+
 FUNCTIONS: dict[str, Callable[..., Any]] = {
+    **DEGREE_FUNCTIONS,
     "sqrt": _float_fn(math.sqrt),
     "exp": _float_fn(math.exp),
     "log": _float_fn(math.log),
@@ -209,9 +247,18 @@ def describe(value: Number, digits: int = 6) -> dict[str, Any]:
     return out
 
 
+def uses_radians(expression: str) -> bool:
+    try:
+        tree = ast.parse(expression.strip().replace("^", "**"), mode="eval")
+    except SyntaxError:
+        return False
+    return any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in RADIAN_FUNCTIONS
+               for node in ast.walk(tree))
+
+
 def cmd_calc(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
     value = evaluate(args.expressao)
-    return {
+    out = {
         "status": "ok",
         "expressao": args.expressao,
         **describe(value, args.casas),
@@ -220,6 +267,9 @@ def cmd_calc(args: argparse.Namespace, ctx: Context) -> dict[str, Any]:
             "Se divergir do que você ia dizer, refaça o raciocínio."
         ),
     }
+    if uses_radians(args.expressao):
+        out["aviso"] = RADIAN_WARNING
+    return out
 
 
 def add_commands(sub: argparse._SubParsersAction) -> None:
