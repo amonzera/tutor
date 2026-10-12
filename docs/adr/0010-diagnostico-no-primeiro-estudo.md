@@ -1,6 +1,6 @@
 # ADR 0010: diagnóstico no primeiro `/estudar`, não no fim do `/nova-materia`
 
-- Status: aceita
+- Status: aceita, emendada pelo [ADR 0011](0011-trilha-completa-por-prioridade.md) (aluno iniciante começa aprendendo, sem diagnóstico; o diagnóstico tem 4 questões)
 - Data: 2026-10-09
 
 ## Contexto

@@ -74,13 +74,13 @@ Um ponto de entrada (`python -m tutor`, chamado por `bash bin/tutor.sh`), subcom
 | `cli` | argparse; erros de uso também saem em JSON. Subcomandos de contexto (`materias`, `contexto`, `inicio-sessao`, `ambiente`, `guarda`) sempre terminam com código 0, porque uma injeção `!` que falha aborta a skill. |
 | `subjects` | Listagem, criação e configuração, `contexto`, `checkpoint`, `validar`, `exemplo`, hook de início. |
 | `ingest` | Inventário, ingestão (PDF via `pdftotext`, Markdown, texto), `texto`, `buscar`, `renderizar`. |
-| `knowledge_map` | Validação do mapa (ids, pré-requisitos, ciclos, fontes) e ordem topológica. |
+| `knowledge_map` | Validação do mapa (ids, pré-requisitos, ciclos, fontes), ordem topológica e ordem da trilha. |
 | `bank` | Banco, gabarito, apresentação em texto, conferência de respostas, importação, verificação cega. |
 | `attempts` | Máquina de estados da tentativa e simulado com correção adiada. |
 | `srs` | Revisão espaçada (interface `Scheduler`), triagem diária, orçamento entre matérias. |
 | `learner` | Domínio por conceito, calibração, preparo estimado. |
 | `selection` | Próximas questões, simulado estratificado, diagnóstico. |
-| `planner` | Calendário reverso e `plano.md`. |
+| `planner` | Trilha completa por prioridade, calendário reverso, `plano.md` e `trilha estudado`. |
 | `report` | Painel e caderno de erros. |
 | `calc` | Calculadora segura (AST) para conferir contas. |
 | `guard` | Política do hook PreToolUse. |
@@ -114,7 +114,11 @@ Limites em [SEGURANCA-E-LIMITES.md](SEGURANCA-E-LIMITES.md).
 
 ## Preparação de uma matéria (`/nova-materia`)
 
-Etapas com status em `materia.json`, retomáveis: inventário → perguntas (só o que falta) → ingestão → mapa (agente ingestor + `validar`) → plano (agente planejador opcional + motor) → banco (extração ou escrita, importação, verificação às cegas, `comparar`, conferência das abertas) → contrato e checkpoint. O diagnóstico abre o primeiro `/estudar`, numa sessão nova ([ADR 0010](adr/0010-diagnostico-no-primeiro-estudo.md)).
+Etapas com status em `materia.json`, retomáveis: inventário → perguntas (só o que falta) → ingestão → mapa (agente ingestor + `validar`) → plano (agente planejador opcional + motor) → banco (extração ou escrita, importação, verificação às cegas, `comparar`, conferência das abertas) → contrato e checkpoint. O primeiro `/estudar` acontece numa sessão nova ([ADR 0010](adr/0010-diagnostico-no-primeiro-estudo.md)) e segue o nível do aluno: iniciante começa aprendendo, os outros níveis fazem um diagnóstico curto ([ADR 0011](adr/0011-trilha-completa-por-prioridade.md)).
+
+## Trilha
+
+Todos os conceitos do mapa formam uma trilha, sem cortes: pré-requisitos antes e, entre os prontos, o que mais cai na prova, depois o mais difícil. Um conceito está concluído quando foi estudado (`trilha estudado`, depois da explicação) e praticado com pelo menos 2 respostas. O plano é recalculado a cada sessão: o que não terminou volta nos dias seguintes, e a trilha só termina com todos os conceitos concluídos ([ADR 0011](adr/0011-trilha-completa-por-prioridade.md)).
 
 ## Heurísticas e parâmetros
 
@@ -133,6 +137,11 @@ Todos ajustáveis e declarados como escolhas de projeto, não resultados de pesq
 | Cobertura mínima do preparo | 50% do peso com 2+ tentativas | `learner` | Sem dados, a faixa seria enganosa. |
 | Prioridades da seleção | erro 3 (+1,5 com confiança alta); acerto inseguro 2; nova 1 | `selection` | Ordem herdada do projeto anterior, mantida simples. |
 | Simulados no plano | D-3 completo, D-2 reforço, D-1 leve | `planner` | Lição do projeto anterior. |
+| Ordem da trilha | pré-requisitos; peso efetivo (herdado de quem o conceito libera); peso; com questões antes de sem questões; mais difícil antes | `knowledge_map` | Decisão do usuário: frequência na prova, depois dificuldade, sem cortar nada. |
+| Concluído na trilha | estudado + 2 respostas (sem "não sei", depois de revelação ou aberta sem nota) | `planner`, `learner` | Explicação mais prática mínima antes de avançar. |
+| Ritmo recomendado | 1 conceito novo a cada 30 (iniciante), 20 (intermediário) ou 15 min (avançado); sem tempo informado, 3 por dia | `planner` | Só para avisar quando o plano aperta; nunca corta conceitos. |
+| Diagnóstico | 4 questões; nenhum para iniciante | `selection`, `planner` | O pré-teste é curto e não substitui a explicação para quem nunca viu a matéria. |
+| Treino de conceito novo | questões da mais fácil para a mais difícil; respondidas nas últimas 24 h por último | `selection` | Exemplo resolvido, depois prática com apoio que diminui. |
 
 ## Pontos de extensão
 

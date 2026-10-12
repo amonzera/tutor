@@ -81,11 +81,11 @@ Cada seção traz: o que a pesquisa diz, a força da evidência, o que o tutor f
 
 **Força da evidência: limitada.** Os estudos são de laboratório, e o guia do IES classifica como baixa a evidência das perguntas prévias em sala de aula (Pashler et al., 2007).
 
-**No tutor.** O diagnóstico abre o primeiro `/estudar`: uma rodada curta que cobre os conceitos de base e os de maior peso, apresentada como mapa de partida, não como nota.
+**No tutor.** Para alunos de nível intermediário ou avançado, um diagnóstico de 4 questões abre o primeiro `/estudar`, como mapa de partida, não como nota; "não sei" vale. Aluno iniciante não faz diagnóstico: começa pela explicação do primeiro conceito da trilha.
 
-**No código.** `tutor/selection.py` (`_diagnostic`); `.claude/skills/diagnostico/SKILL.md`; [ADR 0010](adr/0010-diagnostico-no-primeiro-estudo.md).
+**No código.** `tutor/selection.py` (`_diagnostic`, `DEFAULT_N`); `tutor/planner.py` (`build_plan`); `tutor/subjects.py` (`session_context`); `.claude/skills/diagnostico/SKILL.md`; [ADR 0010](adr/0010-diagnostico-no-primeiro-estudo.md) e [ADR 0011](adr/0011-trilha-completa-por-prioridade.md).
 
-**Limites.** Numa matéria totalmente nova, o pré-teste pode frustrar; por isso ele é curto e o tutor explica o objetivo.
+**Limites.** Numa matéria totalmente nova, o pré-teste toma tempo sem ensinar e frustra: foi o que aconteceu na primeira sessão real de um aluno iniciante, e por isso, para esse nível, ele saiu do fluxo.
 
 ## Feedback
 
@@ -109,11 +109,11 @@ Cada seção traz: o que a pesquisa diz, a força da evidência, o que o tutor f
 
 **No tutor.**
 
-- Conceito novo para o aluno: um exemplo resolvido curto, depois questões com dicas que vão sumindo.
+- Aluno de nível iniciante, ou conceito novo para ele: explicação curta com base nas fontes e um exemplo resolvido antes de qualquer questão; depois as questões do conceito vêm da mais fácil para a mais difícil, com dicas que vão sumindo.
 - Conceito que ele já domina no básico: problema primeiro.
 - A escada de dicas tem quatro degraus (conceito, estratégia, primeiro passo, solução comentada). Acertar com três ou mais degraus conta como erro no modelo do aluno, porque ver o primeiro passo não é resolver sozinho.
 
-**No código.** `CLAUDE.md` (itens 2 e 6); `tutor/attempts.py` (`--dicas`); `tutor/learner.py` (dica decisiva).
+**No código.** `CLAUDE.md` (itens 2 e 6); `tutor/attempts.py` (`--dicas`); `tutor/learner.py` (dica decisiva); `tutor/selection.py` (`next_questions`, da mais fácil para a mais difícil num conceito novo).
 
 **Limites.** Retirar dicas não é o mesmo que retirar passos de um exemplo: a ligação é uma analogia nossa. A decisão entre "iniciante" e "avançado" fica com o tutor e não é medida.
 
@@ -149,13 +149,13 @@ Cada seção traz: o que a pesquisa diz, a força da evidência, o que o tutor f
 
 **No tutor.**
 
-- O domínio é estimado por conceito, e o plano prioriza conceitos fracos e de maior peso, na ordem dos pré-requisitos.
-- Um conceito só conta como "dominado" com acerto estimado de pelo menos 0,85, faixa inferior de pelo menos 0,7 e evidência suficiente (**heurística**).
+- Todos os conceitos formam uma trilha, sem cortes: pré-requisitos antes e, entre os prontos, o que mais cai na prova, depois o mais difícil. A trilha avança um conceito quando ele foi estudado e praticado com pelo menos 2 respostas, e só termina quando todos estiverem concluídos.
+- O domínio também é estimado por conceito: um conceito só conta como "dominado" com acerto estimado de pelo menos 0,85, faixa inferior de pelo menos 0,7 e evidência suficiente (**heurística**).
 - Pré-requisito fraco reduz a prioridade do conceito que depende dele.
 
-**No código.** `tutor/learner.py` (`estimate_concepts`); `tutor/planner.py` (`build_plan`); `tutor/selection.py` (`score_questions`); `tutor/knowledge_map.py` (pré-requisitos).
+**No código.** `tutor/knowledge_map.py` (`trail_order`); `tutor/planner.py` (`trail_status`, `build_plan`); `tutor/learner.py` (`practice_counts`, `estimate_concepts`); `tutor/selection.py` (`score_questions`).
 
-**Limites.** Com prova marcada, o tempo é finito: o plano não espera o domínio completo de um conceito para seguir adiante.
+**Limites.** Com prova marcada, o tempo é finito: a trilha avança com a prática mínima, sem esperar o domínio completo de cada conceito, e o domínio continua sendo trabalhado nas revisões. Se o ritmo necessário passar do recomendado, o tutor avisa e sugere mais tempo diário; não corta conceitos.
 
 ## Metacognição e calibração
 
@@ -240,7 +240,7 @@ O FASTER (Forget, Act, State, Teach, Enter, Review), atribuído a Jim Kwik no li
 
 | Letra | Leitura que adotamos | O que o tutor faz | Evidência |
 |---|---|---|---|
-| F (Forget) | deixar de lado o que se acha que sabe | o diagnóstico mede o que o aluno sabe, em vez de presumir | limitada (pré-teste) |
+| F (Forget) | deixar de lado o que se acha que sabe | a autoavaliação e, para quem não é iniciante, o diagnóstico mostram o que o aluno sabe, em vez de presumir | limitada (pré-teste) |
 | A (Act) | aprender fazendo, não assistindo | tenta primeiro, geração, recuperação | forte (prática de recuperação) |
 | S (State) | estado do aluno | `/estudar` pergunta o tempo disponível e a energia (1 a 5) e faz uma sessão mais leve quando a energia está baixa; o tutor não tenta alterar o estado | heurística |
 | T (Teach) | aprender como quem vai ensinar | ensinar de volta, `/ensinar` | moderada a limitada |
@@ -263,4 +263,4 @@ O tutor **não** usa estas ideias, comuns em materiais sobre "aprender mais ráp
 
 ## Heurísticas próprias
 
-Todos os números de projeto (teto e piso do intervalo, limite diário de revisões, meia-vida da evidência, limiares de "dominado", conversão da confiança, cobertura mínima do preparo, prioridades da seleção, simulados no plano) são escolhas nossas, ajustáveis, e estão listados com a justificativa em [ARQUITETURA.md](ARQUITETURA.md#heurísticas-e-parâmetros). Nenhum deles vem de um estudo específico.
+Todos os números de projeto (teto e piso do intervalo, limite diário de revisões, meia-vida da evidência, limiares de "dominado", conversão da confiança, cobertura mínima do preparo, prioridades da seleção, simulados no plano, ordem e critério de conclusão da trilha, ritmo recomendado, tamanho do diagnóstico) são escolhas nossas, ajustáveis, e estão listados com a justificativa em [ARQUITETURA.md](ARQUITETURA.md#heurísticas-e-parâmetros). Nenhum deles vem de um estudo específico.

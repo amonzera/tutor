@@ -2,6 +2,26 @@
 
 Todas as mudanças relevantes deste projeto. O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Alterado
+
+- Primeira sessão conforme o nível: quem é iniciante começa com explicação e exemplo resolvido, sem diagnóstico; os outros níveis fazem um diagnóstico de 4 questões. O texto de boas-vindas vem pronto do motor e aparece ao aluno no início da sessão.
+- Trilha completa em ordem de prioridade (frequência na prova, depois dificuldade, sempre depois dos pré-requisitos), sem cortes: um conceito conclui quando é estudado e praticado com 2 respostas, e a trilha só termina com todos.
+- Fórmulas em LaTeX nas explicações e nas questões; a importação recusa LaTeX mal escapado no JSON.
+- Num conceito novo, as questões vêm da mais fácil para a mais difícil.
+
+### Adicionado
+
+- Subcomando `trilha estudado`.
+- Funções em graus na calculadora (`sind`, `cosd`, `tand`, `asind`, `acosd`, `atand`, `atan2d`) e aviso quando a conta usa radianos.
+- Progresso da trilha no plano, no painel e no diário.
+
+### Corrigido
+
+- O diário registrava "Próximo passo: Próximo passo" e duplicava o bloco do dia a cada checkpoint.
+- A guarda deixava passar buscas recursivas com caminho absoluto (inclusive no formato do Windows) que alcançam `subjects/`.
+
 ## [0.1.0] - 2026-10-09
 
 Primeira versão.

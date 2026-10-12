@@ -37,7 +37,7 @@ O resumo está no [README](../README.md).
 1. Retoma de onde parou.
 2. Pergunta o tempo disponível e a sua energia.
 3. Faz as revisões do dia: você explica de memória.
-4. Passa aos conceitos do dia, com questões.
+4. Segue a trilha: os próximos conceitos, em ordem de prioridade para a prova. Quem é iniciante recebe explicação e exemplo resolvido antes das questões.
 5. Em cada questão, você responde e diz a confiança (1 a 5) antes de qualquer ajuda. Se travar, recebe dicas em degraus.
 6. No fim, você explica o conceito com as suas palavras.
 7. O tutor agenda as revisões e anota o próximo passo.
@@ -59,7 +59,7 @@ O resumo está no [README](../README.md).
 | Sábado | revisão geral e pontos fracos | `/estudar` |
 | Domingo (véspera) | revisões curtas, nada novo | `/revisar` |
 
-As revisões se espalham sozinhas ao longo da semana e param na véspera.
+As revisões se espalham sozinhas ao longo da semana e param na véspera. A trilha cobre todos os conceitos da matéria e só termina quando todos forem estudados e praticados; o que não der tempo num dia continua no seguinte.
 
 ## 6. Todas as funções
 
