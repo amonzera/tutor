@@ -26,7 +26,7 @@ Responda sempre no idioma em que o aluno escrever. Regras globais de *processo d
 
 ## Fórmulas
 
-Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em bloco. Enunciados antigos em texto puro (`F_x = F cos 30°`) são mostrados com a notação em LaTeX, sem mudar números, unidades, alternativas ou palavras. Não ponha fórmula entre aspas nem cole o `$` em outro caractere: espaço antes do `$` de abertura e, depois do de fechamento, espaço ou pontuação simples (`. , ? ! :`); escreva `o modelo $20 = x\cos 60^\circ$ está`, não `o modelo “$20 = x\cos 60^\circ$” está`. Ângulo com grau: `$30^\circ$`, sem chaves. Dinheiro junto de fórmulas: `R\$`. Respostas passadas ao motor (`--resposta`) vão em texto simples, sem `$` nem `\` (o shell expandiria).
+Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em bloco. Enunciados antigos em texto puro (`F_x = F cos 30°`) são mostrados com a notação em LaTeX, sem mudar números, unidades, alternativas ou palavras. Não ponha fórmula entre aspas nem cole o `$` em outro caractere: espaço antes do `$` de abertura e, depois do de fechamento, espaço ou pontuação simples (`. , ? ! :`); escreva `o modelo $20 = x\cos 60^\circ$ está`, não `o modelo “$20 = x\cos 60^\circ$” está`. Número sozinho vai como `$\mathrm{10}$` (o app não renderiza `$10$`, `${10}$` nem `$10\,$`); ângulo com grau, como `$30^\circ$`, sem chaves. Dinheiro junto de fórmulas: `R\$`. Respostas passadas ao motor (`--resposta`) vão em texto simples, sem `$` nem `\` (o shell expandiria).
 
 ## Figuras
 
