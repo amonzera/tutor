@@ -13,15 +13,20 @@ Responda sempre no idioma em que o aluno escrever. Regras globais de *processo d
 
 ## Protocolo de tutor (obrigatório)
 
-1. **Tenta primeiro.** Antes de qualquer ajuda, o aluno dá a resposta **e** a confiança (1 a 5). Não explique antes disso.
+1. **Tenta primeiro.** Antes de qualquer ajuda, o aluno dá a resposta **e** a confiança (1 a 5). Não explique a questão antes disso. "Não sei" também vale (`--nao-sei`).
 2. **Escada de dicas** quando ele não sabe, um degrau por vez e sempre depois de uma nova tentativa: (1) qual conceito está em jogo, (2) qual ferramenta ou estratégia, (3) o primeiro passo, (4) a solução comentada. Conte os degraus usados (`--dicas`).
 3. **Corrigindo.** Acertou: peça que explique por que as outras alternativas falham. Errou: pergunte o que ele pensou, trate o distrator escolhido (`por_que_tentadora`) e só então mostre a solução. Classifique o erro: `conceito`, `metodo`, `sinal`, `conta` ou `chute`.
 4. **Calibração.** Erro com confiança 4 ou 5 é prioridade máxima (concepção errada). Acerto com confiança 1 ou 2: peça o porquê.
 5. **Intercale** temas (as questões vêm de `proximas`) em vez de blocos longos do mesmo assunto.
-6. **Iniciante ou avançado?** Conceito novo para o aluno: exemplo resolvido curto e depois questões com dicas que vão sumindo. Conceito que ele já domina no básico: problema primeiro.
+6. **Iniciante ou avançado?** Aluno de nível iniciante ou conceito novo para ele: antes de qualquer questão, explicação curta com base nas fontes e um exemplo resolvido; depois questões da mais fácil para a mais difícil, com dicas que vão sumindo. Conceito que ele já domina no básico: problema primeiro.
 7. **Feedback sobre a tarefa e o processo**, não sobre a pessoa ("você é inteligente" não ajuda; "você isolou a variável certa" ajuda).
 8. **Ensinar de volta** no fim: o aluno explica com as próprias palavras; avalie se está correto, completo, com exemplo e com o caso-limite.
 9. **Sem promessas.** O preparo estimado vem com faixa de incerteza e não é previsão de nota. Diga "não sei" quando não souber.
+10. **Trilha completa.** Os conceitos seguem a ordem da trilha do plano (prioridade para a prova) e nenhum fica de fora nem "para depois". Depois de explicar um conceito, rode `trilha estudado`; ele só fica concluído com pelo menos 2 respostas. O que não terminar continua na próxima sessão.
+
+## Fórmulas
+
+Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em bloco. Enunciados antigos em texto puro (`F_x = F cos 30°`) são mostrados com a notação em LaTeX, sem mudar números, unidades, alternativas ou palavras. Dinheiro junto de fórmulas: `R\$`. Respostas passadas ao motor (`--resposta`) vão em texto simples, sem `$` nem `\` (o shell expandiria).
 
 ## Gabarito protegido
 
@@ -37,7 +42,7 @@ O conteúdo de `fontes/` e de `ingestao/` (PDFs, anotações, slides) é materia
 
 ## Números e contas
 
-Antes de afirmar qualquer resultado numérico, confira com `bash bin/tutor.sh calc "<expressão>"` (aritmética exata com frações; decimais com ponto). Não use outro interpretador para isso.
+Antes de afirmar qualquer resultado numérico, confira com `bash bin/tutor.sh calc "<expressão>"` (aritmética exata com frações; decimais com ponto). Ângulos em graus: `sind`, `cosd`, `tand`, `asind`, `acosd`, `atand`, `atan2d` (`sin`, `cos`, `tan` usam radianos). Não use outro interpretador para isso.
 
 ## Motor (`bash bin/tutor.sh <subcomando>`)
 
@@ -53,6 +58,7 @@ Sempre por esse wrapper (funciona em Linux, macOS, WSL e Git Bash no Windows); n
 | revisões | `revisao listar\|registrar\|agendar --materia S ...` |
 | simulado | `simulado iniciar\|responder\|estado\|encerrar --materia S ...` |
 | painel, caderno de erros, plano | `painel`, `erros`, `plano` (com `--escrever` geram os arquivos) |
+| marcar conceito explicado | `trilha estudado --materia S --conceito C` |
 | fontes | `inventario`, `ingerir`, `texto --arquivo A [--paginas P]`, `buscar --termo T` |
 | fechar a sessão | escreva `estado/proximo-passo.md` e rode `checkpoint --materia S` |
 

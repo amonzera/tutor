@@ -59,6 +59,7 @@
 - O enunciado e as alternativas **não podem** conter marcas de resposta ("correta", "gabarito", "[x]"). O motor recusa o rascunho inteiro se houver.
 - `origem`: `{"tipo": "fonte", ...}` para questões extraídas (com arquivo, página e número) ou omitida para questões originais.
 - `figura`: descrição em texto do que a figura mostra, suficiente para resolver. Se a página tinha a resposta marcada, não a registre na descrição.
+- Fórmulas em LaTeX no enunciado, nas alternativas, na solução e nos distratores (`$F_x = F\\cos\\theta$`). No JSON, a barra invertida é sempre **dupla** (`\\frac`, `\\theta`): com barra simples, `\f`, `\t`, `\b`, `\n` e `\r` viram caracteres de controle e o motor recusa o rascunho. Dinheiro como `R$ 10` (sem `$` de fechamento).
 
 ## Questões originais (escritor)
 

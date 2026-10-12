@@ -11,7 +11,7 @@ disable-model-invocation: true
 Matéria: `$ARGUMENTS`.
 
 1. `bash bin/tutor.sh contexto --materia <slug>` e `plano --materia <slug>` para ver o plano atual.
-2. Pergunte o que mudou (AskUserQuestion): data da prova (confirmada ou provisória), tempo diário, dias por semana, conceitos a priorizar ou deixar de lado.
+2. Pergunte o que mudou (AskUserQuestion): data da prova (confirmada ou provisória), tempo diário, dias por semana, conceitos a priorizar.
 3. Grave com `configurar --materia <slug> [--data-prova AAAA-MM-DD] [--data-confirmada sim|nao] [--tempo-diario N] [--dias-semana N]`.
-4. Mudança de prioridade entre conceitos: chame o agente `planejador` para ajustar `peso` e ordem no mapa (depois `validar --etapa mapa`).
-5. `plano --materia <slug> --escrever` e resuma: dias até a prova, foco desta semana, simulados. Plano apertado: diga com franqueza e proponha cortes; não prometa cobrir tudo.
+4. Mudança de prioridade entre conceitos: chame o agente `planejador` para ajustar `peso` no mapa (depois `validar --etapa mapa`). Prioridade muda a ordem da trilha; nenhum conceito sai dela.
+5. `plano --materia <slug> --escrever` e resuma: trilha (concluídos de total), dias até a prova, foco desta semana, simulados. Plano apertado: diga com franqueza o ritmo necessário e proponha mais tempo por dia ou mais dias de estudo; nada fica "para depois".

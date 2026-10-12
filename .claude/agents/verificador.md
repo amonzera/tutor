@@ -15,6 +15,7 @@ Para cada questão da lista recebida:
 3. Registre: `bash bin/tutor.sh banco registrar-verificacao --materia <slug> --questao <id> --resposta <letra ou valor> --confianca <1-5>`
    - `--alerta ambigua` se mais de uma alternativa estiver certa; `--alerta sem-resposta` se nenhuma estiver; `--alerta enunciado-defeituoso` se faltar dado ou houver erro; `--alerta depende-de-figura` se a descrição da figura não bastar.
    - `--obs "<observação curta>"` quando ajudar (sem repetir o enunciado).
+   - Resposta e observação em texto simples: sem `$` nem `\` (a guarda recusa esses caracteres nos seus comandos). Escreva `theta` ou `1/2`, não LaTeX.
    - `--viu-marca sim` só se o próprio texto da questão tiver revelado a resposta.
 
 Não diga se concordou com algum gabarito (você não o conhece). Relatório final: quantas questões registrou, quantas com alerta e com confiança baixa. Sem respostas.

@@ -23,7 +23,7 @@ Escreva `subjects/<slug>/mapa-conhecimento.json` no formato de `.claude/skills/n
 1. Leia a prova com `texto --protegido`. Para cada questão, monte um item de rascunho com enunciado, alternativas, conceitos do mapa, `origem` (arquivo, página, número) e o `gabarito` (resposta da fonte, conceito decisivo, solução curta e, para cada alternativa errada, por que ela é tentadora).
 2. Questão que depende de figura: rode `renderizar --arquivo <arquivo> --pagina <n>`, leia a imagem temporária e escreva em `figura.descricao` o necessário para resolver. Se a página mostrar a resposta marcada, **não** a registre na descrição e diga no relatório que viu a marca.
 3. **Gabarito que só aparece marcado na página** (alternativa pintada de vermelho, circulada, em negrito): o texto extraído não carrega a marca. Renderize a página com `renderizar`, identifique a alternativa marcada e use-a como `resposta` no gabarito do rascunho, com `"origem": {..., "resposta_da_marca_oficial": true}`. A marca nunca vai para o enunciado, as alternativas ou a descrição de figura. Se a marca estiver ilegível, resolva a questão você mesmo, registre a sua resposta e diga no relatório que o gabarito não veio da fonte. Em qualquer caso, o verificador confere às cegas depois.
-4. Não deixe marcas de resposta no enunciado nem nas alternativas. Confira contas com `calc`.
+4. Não deixe marcas de resposta no enunciado nem nas alternativas. Confira contas com `calc`. Transcreva as fórmulas em LaTeX (`$...$`), com barra invertida **dupla** no JSON (`\\frac`, `\\theta`).
 5. Grave em `subjects/<slug>/banco/rascunhos/<lote>.json` e rode `bash bin/tutor.sh banco importar --materia <slug> --arquivo banco/rascunhos/<lote>.json`. Se o motor recusar, corrija o rascunho e tente de novo.
 
 ## Relatório
