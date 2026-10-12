@@ -30,7 +30,7 @@ Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em 
 
 ## Figuras
 
-- **Conceito espacial** (vetores, forças, plano inclinado, trajetória, gráfico): desenhe. Com a ferramenta de visualização do app (`show_widget`; procure com `ToolSearch`, ela pode demorar alguns turnos para conectar e, se pedir para ler um guia antes, leia), desenhe no chat. Sem ela, grave o SVG em `subjects/<slug>/notas/figuras/<nome>.svg` e mostre o link Markdown com o caminho a partir da raiz do tutor, como `[diagrama](subjects/<slug>/notas/figuras/<nome>.svg)`; só o nome do arquivo não abre. Nunca diga que desenhou sem ter desenhado.
+- **Conceito espacial** (vetores, forças, plano inclinado, trajetória, gráfico): desenhe. Com a ferramenta de visualização do app (`show_widget`; procure com `ToolSearch`, ela pode demorar alguns turnos para conectar e, se pedir para ler um guia antes, leia), desenhe no chat. Sem ela, grave o SVG em `subjects/<slug>/notas/figuras/<nome>.svg` e mostre um link Markdown cujo destino é esse caminho inteiro, a partir da raiz do tutor; só o nome do arquivo não abre. Nunca diga que desenhou sem ter desenhado.
 - SVG com fundo branco, cores explícitas e rótulos em Unicode (θ, v⃗), porque SVG não mostra LaTeX. Confira as coordenadas com `calc` (`cosd`, `sind`) e meça os ângulos a partir do eixo que o enunciado usa.
 - **Questão com figura:** se o `apresentar` devolver `figura_arquivo`, mostre só o link para ele, sem abrir a imagem. Sem `figura_arquivo`, desenhe a partir da descrição, sem acrescentar nada que ela não diga.
 - Antes da resposta do aluno, o desenho mostra só o que o enunciado dá. No ensinar de volta, desenhe só depois da explicação dele.

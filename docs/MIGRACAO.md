@@ -21,7 +21,7 @@ Para quem estudava com um projeto no formato do [learn-faster-kit](https://githu
 
 1. Clone este repositório e crie `subjects/<slug>/fontes/` (slug sem acento nem espaço).
 2. Copie o **material** (PDFs, guias, listas) para `fontes/`; provas e listas com gabarito em `fontes/provas/`. **Não** copie `answer_key.json` nem gabaritos soltos para fora de `fontes/provas/`.
-3. Se as provas antigas vinham com a resposta marcada na página (por exemplo, em vermelho), responda "sim" a essa pergunta no `/nova-materia`: o `CLAUDE.md` da matéria passa a proibir imagens dessas páginas.
+3. Se as provas antigas vinham com a resposta marcada na página (por exemplo, em vermelho), responda "sim" a essa pergunta no `/nova-materia`: o `CLAUDE.md` da matéria passa a proibir imagens dessas páginas, e as figuras aparecem só como recorte ou redesenho.
 4. Rode `/nova-materia <slug>`. O banco é refeito a partir das provas, com verificação às cegas; questões divergentes ficam de fora até você decidir.
 5. Abra uma sessão nova e rode `/estudar <slug>`. A primeira sessão (diagnóstico curto ou, para iniciante, a explicação do primeiro conceito da trilha) substitui o histórico antigo.
 
