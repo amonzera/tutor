@@ -405,6 +405,8 @@ def import_draft(paths: SubjectPaths, draft: Path, now: datetime, replace: bool 
     save_bank(paths, questions)
     save_key(paths, key)
     _drop_verification(paths, replaced)
+    for item, _ in staged:  # recorte antigo não vale para o texto novo; recortes vêm depois da importação
+        (paths.figuras / f"{item['id']}.png").unlink(missing_ok=True)
     mark_step(paths, "banco", False)  # questões novas precisam de verificação antes de a etapa fechar
     draft.unlink()
     if paths.figuras_temp.is_dir():

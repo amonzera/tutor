@@ -43,6 +43,14 @@ class PracticeFlowTest(TempWorkspaceCase):
         with self.assertRaises(TutorError):
             attempts.check(self.paths, qid(1), answer_of(1), 3, 0, None, self.now)
 
+    def test_figure_link_only_with_crop(self) -> None:
+        self.assertNotIn("figura_arquivo", attempts.present(self.paths, qid(1), "treino", self.now))
+        self.paths.figuras.mkdir(parents=True)
+        (self.paths.figuras / f"{qid(1)}.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+        shown = attempts.present(self.paths, qid(1), "treino", self.now)
+        self.assertTrue(shown["figura_arquivo"].endswith(f"banco/figuras/{qid(1)}.png"), shown["figura_arquivo"])
+        self.assertNotIn("figura_arquivo", attempts.present(self.paths, qid(1), "verificacao", self.now))
+
     def test_validation_of_confidence_and_hints(self) -> None:
         attempts.present(self.paths, qid(1), "treino", self.now)
         for confidence, hints in [(0, 0), (6, 0), (3, -1), (3, 5)]:

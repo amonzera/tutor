@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from tutor.bank import check_answer, load_bank, load_key, normalize_letter, parse_number, public_view
@@ -30,6 +31,7 @@ from tutor.core import (
     load_materia,
     read_json,
     read_jsonl,
+    repo_root,
     resolve_subject,
     write_json,
 )
@@ -137,6 +139,14 @@ def _active_exam(paths: SubjectPaths) -> dict[str, Any] | None:
     return read_json(paths.simulado)
 
 
+def _link_path(path: Path) -> str:
+    """Caminho para o link no chat: relativo à raiz do repositório, onde o Claude Code roda, ou absoluto."""
+    try:
+        return path.resolve().relative_to(repo_root()).as_posix()
+    except ValueError:
+        return path.resolve().as_posix()
+
+
 def present(paths: SubjectPaths, qid: str, mode: str, now: datetime) -> dict[str, Any]:
     questions = load_bank(paths)
     question = questions.get(qid)
@@ -168,18 +178,23 @@ def present(paths: SubjectPaths, qid: str, mode: str, now: datetime) -> dict[str
         write_json(paths.sessao, session)
     view = public_view(question)
     out: dict[str, Any] = {"status": "ok", "modo": mode, "questao": view}
+    figure = paths.figuras / f"{qid}.png"
+    if figure.is_file():
+        out["figura_arquivo"] = _link_path(figure)
     if question.get("verificacao") in ("pendente", "aviso"):
         out["verificacao"] = question["verificacao"]
         out["aviso"] = question.get("aviso") or "Questão ainda não verificada de forma independente."
     if mode == "simulado":
         out["llm_directive"] = (
-            "Simulado: mostre só o enunciado e as alternativas. Peça a resposta e a confiança (1 a 5) e registre "
-            "com `simulado responder`. Não comente se está certo, não dê dicas."
+            "Simulado: mostre só o enunciado, as alternativas e a figura (link para `figura_arquivo` ou, sem ele, "
+            "desenho ou descrição). Peça a resposta e a confiança (1 a 5) e registre com `simulado responder`. "
+            "Não comente se está certo, não dê dicas."
         )
     else:
         out["llm_directive"] = (
-            "Mostre o enunciado e as alternativas em texto (descreva a figura, se houver; nunca imagem de página "
-            "de prova). Não revele tema nem conceito. Peça a resposta E a confiança (1 a 5) antes de qualquer ajuda. "
+            "Mostre o enunciado e as alternativas. Figura: com `figura_arquivo`, só o link Markdown para ele (não "
+            "abra a imagem); sem ele, desenhe a partir da descrição ou transcreva-a. "
+            "Não revele tema nem conceito. Peça a resposta E a confiança (1 a 5) antes de qualquer ajuda. "
             "Se o aluno não souber, suba UM degrau da escada de dicas por vez (conceito, ferramenta, primeiro passo, "
             "solução) e conte as dicas dadas. Corrija com `corrigir`."
             + (" Avise que a questão ainda não foi verificada." if "verificacao" in out else "")

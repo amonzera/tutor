@@ -81,9 +81,13 @@ class ImportTest(TempWorkspaceCase):
         item = mc_draft_item("bayes", "A", 95, id=qid(1))
         with self.assertRaises(TutorError):
             import_draft(self.paths, self._draft([item]), self.now)
+        crop = self.paths.figuras / f"{qid(1)}.png"
+        crop.parent.mkdir(parents=True)
+        crop.write_bytes(b"\x89PNG\r\n\x1a\n")
         result = import_draft(self.paths, self._draft([item]), self.now, replace=True)
         self.assertEqual(result["importadas"], [qid(1)])
         self.assertEqual(load_key(self.paths)[qid(1)]["resposta"], "A")
+        self.assertFalse(crop.exists(), "o recorte da questão antiga não vale para a nova")
 
     def test_unknown_fields_are_refused(self) -> None:
         item = mc_draft_item("bayes", "A", 97, explicacao="a resposta é A porque...")
