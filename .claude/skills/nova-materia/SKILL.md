@@ -39,7 +39,7 @@ Chame o agente `ingestor-de-fontes` para escrever `subjects/<pasta>/mapa-conheci
 
 ## 5. Plano
 
-Opcional: chame o agente `planejador` para ajustar pesos e ordem no mapa (recorrência nas provas, objetivo do aluno). Depois `plano --materia <pasta> --escrever` e resuma o calendário ao aluno.
+Opcional: chame o agente `planejador` para ajustar pesos no mapa (recorrência nas provas, objetivo do aluno). Depois `plano --materia <pasta> --escrever` e resuma ao aluno a trilha (todos os conceitos, em ordem de prioridade) e o calendário.
 
 ## 6. Banco de questões (incremental)
 
@@ -56,6 +56,6 @@ Se `materia.json` tiver `modelos.<agente>` (modelo e esforço), use esses valore
 ## 7. Fechamento
 
 1. Mostre o `CLAUDE.md` gerado da matéria (regras específicas) e o resumo: conceitos, dias até a prova, questões verificadas.
-2. Escreva `subjects/<pasta>/estado/proximo-passo.md`: "Primeira sessão: diagnóstico e foco do dia 1 do plano."
+2. Escreva `subjects/<pasta>/estado/proximo-passo.md`: para nível iniciante, "Primeira sessão: começar pelo primeiro conceito da trilha, com explicação e exemplo resolvido."; para os outros níveis, "Primeira sessão: diagnóstico curto e depois os primeiros conceitos da trilha."
 3. `checkpoint --materia <pasta>`.
 4. Termine pedindo ao aluno que **abra uma sessão nova** (ou use `/clear`) e rode `/estudar <pasta>`: o contexto desta preparação passou por rascunhos com respostas, e o diagnóstico deve começar limpo.

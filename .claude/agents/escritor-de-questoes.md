@@ -20,6 +20,7 @@ Você escreve questões **originais** para o banco de uma matéria. O pedido diz
 - Uma hipótese muda por questão em relação às questões das fontes. Misture tipos: conceitual, numérica, leitura de tabela ou gráfico, híbrida.
 - Confira **todas** as contas com `bash bin/tutor.sh calc "<expressão>"`. Se a conta e a alternativa discordarem, corrija a questão.
 - Nenhuma marca de resposta no enunciado ou nas alternativas. Nada copiado de material protegido por direitos autorais.
+- Fórmulas em LaTeX (`$...$`) no enunciado, nas alternativas, na solução e nos distratores, com barra invertida **dupla** no JSON (`\\frac`, `\\theta`). Inclua questões fáceis (`"dificuldade": 1`) para cada conceito: o tutor começa por elas com quem é iniciante.
 
 ## Gravar
 
