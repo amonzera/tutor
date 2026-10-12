@@ -6,7 +6,7 @@ import random
 import unittest
 from datetime import timedelta
 
-from tests.fixtures import answer_of, build_subject, qid, wrong_of
+from tests.fixtures import answer_of, build_subject, mc_draft_item, qid, wrong_of
 from tests.helpers import TempWorkspaceCase
 from tutor import attempts, selection
 from tutor.bank import load_bank, save_bank
@@ -81,6 +81,25 @@ class SelectionTest(TempWorkspaceCase):
         bank = load_bank(self.paths)
         concepts = [bank[q]["conceitos"][0] for q in order]
         self.assertEqual(concepts, ["espaco-amostral", "prob-classica", "prob-condicional", "bayes"])
+
+    def test_diagnostic_default_size(self) -> None:
+        picks = selection.next_questions(self.paths, "diagnostico", None, None, None, self.now, random.Random(1))
+        self.assertEqual(len(picks), 4)
+
+    def test_new_concept_starts_easy_and_leaves_recent_for_last(self) -> None:
+        extra = [mc_draft_item("espaco-amostral", "A", 9, dificuldade=1), mc_draft_item("espaco-amostral", "B", 10, dificuldade=3)]
+        paths = build_subject(self.subjects, self.now, slug="dif", extra_questions=extra)
+
+        def picks(when):
+            return [q["id"] for q in selection.next_questions(paths, "treino", 4, None, "espaco-amostral", when,
+                                                              random.Random(1))]
+
+        order = picks(self.now)
+        self.assertEqual(order[0], qid(9, "dif"), "a mais fácil primeiro")
+        self.assertEqual(order[-1], qid(10, "dif"), "a mais difícil por último")
+        attempts.present(paths, qid(9, "dif"), "treino", self.now)
+        attempts.check(paths, qid(9, "dif"), "A", 3, 0, 30, self.now)
+        self.assertEqual(picks(self.now + timedelta(hours=1))[-1], qid(9, "dif"), "respondida há pouco vai para o fim")
 
     def scores(self):
         materia, kmap, questions, history, estimates = selection._context(self.paths, self.now)

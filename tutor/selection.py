@@ -6,6 +6,9 @@ Prioridade de uma questão (maior primeiro), a partir da última tentativa:
 Multiplicadores: conceito fraco ou sem dados, peso do conceito, revisão vencida (x1,5),
 pré-requisito ainda fraco (x0,3), acerto no mesmo dia (x0,2). A ordem final
 intercala temas. Pesos e multiplicadores são heurísticos (veja docs/ARQUITETURA.md).
+No treino de um conceito ainda não concluído na trilha, a ordem é outra: as questões
+respondidas nas últimas 24 h por último, as do conceito como principal primeiro e,
+entre elas, da mais fácil para a mais difícil.
 A saída traz só ids: tema e conceitos ficam ocultos até a correção.
 """
 
@@ -17,15 +20,16 @@ from datetime import date, datetime
 from typing import Any
 
 from tutor import attempts as attempt_store
-from tutor.attempts import Attempt
+from tutor.attempts import REVEAL_WINDOW, Attempt
 from tutor.bank import load_bank
 from tutor.core import Context, SubjectPaths, TutorError, load_materia, resolve_subject
 from tutor.knowledge_map import KnowledgeMap, load_map
-from tutor.learner import ConceptEstimate, estimate_concepts, params_from, readiness
+from tutor.learner import ConceptEstimate, estimate_concepts, params_from, practice_counts, readiness
+from tutor.planner import load_studied
 from tutor.srs import is_due, load_items
 
 MODES = ("treino", "quiz", "revisao", "diagnostico")
-DEFAULT_N = {"treino": 3, "quiz": 5, "revisao": 3, "diagnostico": 8}
+DEFAULT_N = {"treino": 3, "quiz": 5, "revisao": 3, "diagnostico": 4}
 
 
 def _base_score(history: list[Attempt], today: date) -> float:
@@ -124,8 +128,22 @@ def next_questions(
         return [{"id": qid, "tipo": pool[qid].get("tipo", "multipla-escolha")}
                 for qid in _diagnostic(pool, kmap, history, n, rng)]
     scores = score_questions(pool, kmap, estimates, history, due, today)
+    if mode == "treino" and concept and not _concluded(paths, concept, questions, history, materia):
+        recent = {a.id for a in history if now - a.at <= REVEAL_WINDOW}
+        ordered = sorted(scores, key=lambda q: (
+            q in recent, (pool[q].get("conceitos") or [None])[0] != concept,
+            int(pool[q].get("dificuldade", 2)), -scores[q], rng.random(),
+        ))
+        return [{"id": qid, "tipo": pool[qid].get("tipo", "multipla-escolha")} for qid in ordered[:n]]
     ranked = sorted(scores, key=lambda q: (-scores[q], rng.random()))
     return [{"id": qid, "tipo": pool[qid].get("tipo", "multipla-escolha")} for qid in interleave(ranked, pool, n)]
+
+
+def _concluded(paths: SubjectPaths, concept: str, questions: dict[str, dict[str, Any]], history: list[Attempt],
+               materia: dict[str, Any]) -> bool:
+    """Estudado (`trilha estudado`) e praticado com o mínimo de respostas."""
+    needed = max(1, int(params_from(materia)["respostas_para_concluir"]))
+    return concept in load_studied(paths) and practice_counts(questions, history).get(concept, 0) >= needed
 
 
 def _diagnostic(

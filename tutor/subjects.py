@@ -333,6 +333,19 @@ def validate(paths: SubjectPaths, step: str) -> dict[str, Any]:
 # ---------------------------------------------------------------- sessão
 
 
+WELCOME_BEGINNER = (
+    "Como vamos estudar: cada conceito começa com uma explicação curta e um exemplo resolvido; depois você resolve "
+    "questões, das mais fáceis para as mais difíceis. Em cada questão, você dá a resposta e a sua confiança (1 a 5) "
+    "antes de qualquer ajuda. Se não souber, diga \"não sei\": eu dou dicas, um degrau por vez. Errar faz parte do "
+    "aprendizado."
+)
+WELCOME_OTHERS = (
+    "Como vamos estudar: começamos com um diagnóstico curto, de 4 questões, para ver o que você já sabe (\"não sei\" "
+    "também vale). Em cada questão, você dá a resposta e a sua confiança (1 a 5) antes de qualquer ajuda; se travar, "
+    "eu dou dicas, um degrau por vez. Depois seguimos a trilha de conceitos, na ordem de prioridade para a prova."
+)
+
+
 def _diary_entries(paths: SubjectPaths, count: int) -> list[str]:
     if not paths.diario.is_file():
         return []
@@ -353,6 +366,7 @@ def session_context(ctx: Context, slug: str | None) -> dict[str, Any]:
         return {"status": "ok", "materia": paths.slug, "estado": "nova",
                 "llm_directive": f"Matéria ainda não preparada. Sugira /nova-materia {paths.slug}."}
     out: dict[str, Any] = {"status": "ok", "materia": summary}
+    level = (load_materia(paths) or {}).get("nivel")
     out["contrato"] = paths.contrato.read_text(encoding="utf-8") if paths.contrato.is_file() else None
     out["proximo_passo"] = paths.proximo.read_text(encoding="utf-8").strip() if paths.proximo.is_file() else None
     out["diario_recente"] = _diary_entries(paths, 2)
@@ -376,28 +390,80 @@ def session_context(ctx: Context, slug: str | None) -> dict[str, Any]:
         }
         plan, _ = planner.compute(paths, today)
         out["plano_hoje"] = planner.today_entry(plan, today)
+        trail = plan["trilha"]
+        names = {cid: c.name for cid, c in load_map(paths).concepts.items()}
+        out["trilha"] = {
+            "concluidos": len(trail["concluidos"]), "total": trail["total"], "concluida": trail["concluida"],
+            "proximos": [{"id": c, "nome": names.get(c, c)} for c in trail["proximos"]],
+            "sem_questoes": trail["sem_questoes"], "respostas_para_concluir": trail["respostas_para_concluir"],
+        }
     except TutorError as exc:
         gaps.append(exc.message)
-    out["primeira_sessao"] = not history
+    first = not history
+    out["primeira_sessao"] = first
+    if first:
+        out["boas_vindas"] = WELCOME_BEGINNER if level == "iniciante" else WELCOME_OTHERS
     if gaps:
         out["faltando"] = gaps
+    trail_info = out.get("trilha") or {}
+    needed = trail_info.get("respostas_para_concluir", 2)
     steps = summary.get("etapas_pendentes") or []
     if steps:
         directive = f"A preparação da matéria não terminou (etapas: {', '.join(steps)}). Sugira /nova-materia {paths.slug}."
     elif out.get("simulado_em_andamento"):
         directive = "Há um simulado em andamento: ofereça retomar (sem feedback) ou encerrar com `simulado encerrar`."
-    elif not history:
+    elif first and level == "iniciante":
         directive = (
-            "Primeira sessão: explique em 3 linhas como o tutor funciona (tenta primeiro, confiança, dicas em escada) "
-            "e comece pelo diagnóstico (`proximas --modo diagnostico`)."
+            "Primeira sessão de aluno iniciante: mostre `boas_vindas` exatamente como veio. Sem diagnóstico. Comece pelo "
+            "primeiro conceito de `plano_hoje.conceitos` (ou de `trilha.proximos`): explicação curta com base nas fontes "
+            "(`buscar`, `texto`; cite arquivo e página), um exemplo resolvido, `trilha estudado` e questões com "
+            "`proximas --conceito <id>`, das mais fáceis para as mais difíceis."
+        )
+    elif first:
+        directive = (
+            "Primeira sessão: mostre `boas_vindas` exatamente como veio e faça o diagnóstico curto "
+            "(`proximas --modo diagnostico`, 4 questões); \"não sei\" é resposta válida. Depois, os conceitos de hoje "
+            "na ordem da trilha."
+        )
+    elif trail_info.get("concluida"):
+        directive = (
+            "Trilha concluída. Retome pelo proximo_passo e pelo diário: pendências, revisões vencidas, pontos fracos e "
+            "simulados, depois ensinar de volta e checkpoint."
         )
     else:
         directive = (
-            "Retome pelo proximo_passo e pelo diário. Ordem: pendências de classificação, revisões vencidas, foco do "
-            "dia no plano (ou conceito mais fraco), questões no modo tenta-primeiro, ensinar de volta e checkpoint."
+            "Retome pelo proximo_passo e pelo diário. Ordem: pendências de classificação e avaliação, revisões vencidas "
+            "e os próximos conceitos da trilha (`plano_hoje.conceitos`; sem plano para hoje, `trilha.proximos`), cada um "
+            f"com explicação (`trilha estudado`) e pelo menos {needed} respostas; o que não terminar continua na próxima "
+            "sessão. Depois, ensinar de volta e checkpoint."
         )
+    if trail_info.get("sem_questoes") and not steps:
+        directive += (" Conceitos sem questões suficientes (`trilha.sem_questoes`): acione o agente escritor-de-questoes "
+                      "para eles e depois o verificador, `banco comparar` e `validar --etapa banco`.")
     out["llm_directive"] = directive
     return out
+
+
+def _next_step_summary(text: str) -> str:
+    """Primeira linha de conteúdo do próximo passo: sem títulos, marcadores nem o rótulo "Próximo passo:"."""
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = re.sub(r"^(?:[-*+>]\s*|\d+[.)]\s+)+", "", line)
+        line = re.sub(r"^\**\s*pr[óo]ximo passo\s*\**\s*:?\s*\**\s*", "", line, flags=re.IGNORECASE).strip("* ").strip()
+        if line:
+            return line[:160]
+    return "não registrado"
+
+
+def _with_today_block(diary: str, today: date, block: str) -> str:
+    """Acrescenta o bloco do dia ao diário; se o último bloco já é de hoje, substitui (o bloco resume o dia)."""
+    text = diary.rstrip("\n")
+    head, sep, last = text.rpartition("\n## ")
+    if sep and last.split("\n", 1)[0].strip() == today.isoformat():
+        text = head.rstrip("\n")
+    return text + "\n\n" + block
 
 
 def checkpoint(ctx: Context, slug: str | None) -> dict[str, Any]:
@@ -425,9 +491,11 @@ def checkpoint(ctx: Context, slug: str | None) -> dict[str, Any]:
     digest = hashlib.sha256(next_text.encode("utf-8")).hexdigest()
     session = read_json(paths.sessao, {}) or {}
     stale = not next_text or session.get("proximo_passo_sha") == digest
-    first_line = next(
-        (line.strip("-# ").strip() for line in next_text.splitlines() if line.strip("-# ").strip()), "não registrado"
-    )
+    first_line = _next_step_summary(next_text)
+    try:
+        plan, plan_text = planner.compute(paths, today)
+    except TutorError:
+        plan, plan_text = None, None
     lines = [
         f"## {today.isoformat()}",
         "",
@@ -440,16 +508,19 @@ def checkpoint(ctx: Context, slug: str | None) -> dict[str, Any]:
     lines.append(f"- Revisões: {len(reviews)}" + (f" ({forgotten} esquecida(s))" if forgotten else ""))
     if pend["classificar"] or pend["avaliar"]:
         lines.append(f"- Pendências: classificar {pend['classificar'] or '-'}; avaliar {pend['avaliar'] or '-'}")
+    if plan is not None:
+        trail = plan["trilha"]
+        lines.append(f"- Trilha: {len(trail['concluidos'])} de {trail['total']} conceitos concluídos")
     lines.append(f"- Próximo passo: {first_line}")
     previous = paths.diario.read_text(encoding="utf-8") if paths.diario.is_file() else "# Diário de estudo\n"
-    write_text(paths.diario, previous.rstrip("\n") + "\n\n" + "\n".join(lines))
+    write_text(paths.diario, _with_today_block(previous, today, "\n".join(lines)))
     session["proximo_passo_sha"] = digest
     write_json(paths.sessao, {**session, "schema_version": SCHEMA_VERSION})
     materia["ultima_sessao"] = today.isoformat()
     write_json(paths.materia, materia)
     try:
-        _, plan_text = planner.compute(paths, today)
-        write_text(paths.plano, plan_text)
+        if plan_text is not None:
+            write_text(paths.plano, plan_text)
         write_text(paths.dominio, report.render_dashboard(report.build_dashboard(paths, ctx.clock.now()), ctx.clock.now()))
     except TutorError:
         pass
@@ -507,7 +578,25 @@ def session_start_texts(ctx: Context) -> tuple[str, str]:
     context = "\n".join(lines)[:SESSION_START_MAX_CHARS]
     due = sum(int(item.get("revisoes_vencidas") or 0) for item in items)
     message = f"Tutor: {len(items)} matéria(s), {due} revisão(ões) vencida(s) hoje. Use /estudar ou /materias."
+    welcomes = _first_session_welcomes(ctx, items)
+    if welcomes:
+        message += "\n\n" + "\n\n".join(welcomes[:2])
     return context, message
+
+
+def _first_session_welcomes(ctx: Context, items: list[dict[str, Any]]) -> list[str]:
+    """Boas-vindas das matérias prontas e ainda sem tentativas: o aluno vê pelo systemMessage, sem depender do modelo."""
+    out = []
+    for item in items:
+        if item.get("estado") != "ativa":
+            continue
+        paths = SubjectPaths(ctx.workspace.subjects / item["pasta"])
+        if paths.tentativas.is_file() and paths.tentativas.stat().st_size > 0:
+            continue
+        level = (read_json(paths.materia, {}) or {}).get("nivel")
+        welcome = WELCOME_BEGINNER if level == "iniciante" else WELCOME_OTHERS
+        out.append(f"Primeira sessão de {item.get('nome') or item['pasta']}. {welcome}")
+    return out
 
 
 # ---------------------------------------------------------------- exemplo

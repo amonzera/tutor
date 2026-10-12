@@ -14,6 +14,7 @@ from datetime import datetime
 from typing import Any
 
 from tutor import attempts as attempt_store
+from tutor import planner
 from tutor.bank import load_bank, load_key
 from tutor.core import Context, SubjectPaths, load_materia, parse_date, read_jsonl, resolve_subject, write_text
 from tutor.knowledge_map import load_map
@@ -49,6 +50,7 @@ def build_dashboard(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
         for r in read_jsonl(paths.simulados)
     ]
     pend = attempt_store.pending(history)
+    trail = planner.trail_status(kmap, questions, history, planner.load_studied(paths), params)
     dashboard = {
         "materia": paths.slug,
         "nome": materia.get("nome"),
@@ -71,6 +73,8 @@ def build_dashboard(paths: SubjectPaths, now: datetime) -> dict[str, Any]:
         "simulados": exams,
         "revisoes": {"agendadas": len(items), "vencidas": sum(1 for i in items if is_due(i, today, exam_date))},
         "pendencias": pend,
+        "trilha": {"concluidos": len(trail["concluidos"]), "total": trail["total"],
+                   "proximos": [kmap.concepts[c].name for c in trail["proximos"]]},
     }
     dashboard["proximas_acoes"] = _next_actions(dashboard, estimates, history, today)
     return dashboard
@@ -89,9 +93,8 @@ def _next_actions(dashboard, estimates, history, today) -> list[str]:
         weakest = max(tried, key=lambda e: e.weight * (1 - e.mean))
         if weakest.status != "dominado":
             actions.append(f"Praticar o conceito mais fraco considerando o peso: {weakest.name} (/quiz).")
-    untouched = sorted((e for e in estimates.values() if not e.attempts), key=lambda e: -e.weight)
-    if untouched:
-        actions.append(f"Começar conceitos sem tentativas, pelo de maior peso: {untouched[0].name}.")
+    if dashboard["trilha"]["proximos"]:
+        actions.append(f"Seguir a trilha: próximo conceito, {dashboard['trilha']['proximos'][0]} (/estudar).")
     if dashboard["calibracao"].get("vies", 0) > 0.1 and dashboard["calibracao"].get("n", 0) >= 10:
         actions.append("Treinar calibração: antes de dar confiança 4 ou 5, diga em uma frase por que tem certeza.")
     return actions[:5]
@@ -106,6 +109,7 @@ def render_dashboard(d: dict[str, Any], now: datetime) -> str:
     lines.append(f"- Tentativas: {s['tentativas']} em {s['dias_com_estudo']} dia(s); questões distintas: "
                  f"{s['questoes_distintas']} de {s['banco']} ({s['verificadas']} verificadas)")
     lines.append(f"- Revisões: {d['revisoes']['vencidas']} vencida(s) de {d['revisoes']['agendadas']} agendada(s)")
+    lines.append(f"- Trilha: {d['trilha']['concluidos']} de {d['trilha']['total']} conceitos concluídos")
     prep = d["preparo"]
     if prep.get("disponivel"):
         lines.append(f"- Preparo estimado: {prep['mediana']} de {prep['questoes']} (faixa de 80%: "

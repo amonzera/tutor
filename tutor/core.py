@@ -196,6 +196,7 @@ _SUBJECT_FILES = {
     "diario": "estado/diario.md",
     "proximo": "estado/proximo-passo.md",
     "caderno": "estado/caderno-de-erros.md",
+    "trilha": "estado/trilha.json",
     "ingestao": "ingestao",
     "protegido": "ingestao/protegido",
     "figuras_temp": "ingestao/figuras-temp",

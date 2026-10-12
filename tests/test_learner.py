@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 
 from tutor.attempts import Attempt
 from tutor.knowledge_map import Concept, KnowledgeMap
-from tutor.learner import DEFAULT_PARAMS, calibration, estimate_concepts, readiness
+from tutor.learner import DEFAULT_PARAMS, calibration, estimate_concepts, practice_counts, readiness
 
 NOW = datetime(2026, 3, 2, 10, 0)
 _SEQ = itertools.count(1)
@@ -64,6 +64,25 @@ class EstimateTest(unittest.TestCase):
         revealed = [attempt("q1-0", True, after_reveal=True) for _ in range(5)]
         est = estimate_concepts(kmap(), bank(), revealed, NOW, DEFAULT_PARAMS)
         self.assertEqual(est["c1"].attempts, 0)
+
+
+class PracticeCountsTest(unittest.TestCase):
+    def test_what_counts_as_practice(self) -> None:
+        questions = bank(2, 3)
+        questions["multi"] = {"id": "multi", "tipo": "multipla-escolha", "alternativas": {"A": "a", "B": "b"},
+                              "conceitos": ["c0", "c1"]}
+        questions["aberta"] = {"id": "aberta", "tipo": "aberta", "conceitos": ["c1"]}
+        dont_know = attempt("q0-2", False)
+        dont_know.dont_know = True
+        base = [attempt("q0-0", True), attempt("q0-1", False, hints=3), dont_know,
+                attempt("q1-0", True, after_reveal=True), attempt("multi", True)]
+        pending = attempt("aberta", True)
+        pending.correct = None
+        self.assertEqual(practice_counts(questions, base + [pending]), {"c0": 3, "c1": 1},
+                         "não sei, depois da revelação e aberta sem nota não contam; vários conceitos contam para todos")
+        graded = attempt("aberta", True)
+        graded.correct, graded.grade = None, "parcial"
+        self.assertEqual(practice_counts(questions, base + [graded])["c1"], 2)
 
 
 class CalibrationTest(unittest.TestCase):
