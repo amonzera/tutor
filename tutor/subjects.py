@@ -213,7 +213,8 @@ def render_contract(root: Path, materia: dict[str, Any]) -> str:
     ]
     if materia.get("provas_marcam_resposta"):
         rules.append("- As provas antigas desta matéria trazem a resposta marcada na página (por exemplo, em vermelho). "
-                     "Nunca abra nem mostre imagens dessas páginas; use só o texto de `apresentar`.")
+                     "Nunca abra nem mostre imagens dessas páginas; a figura de uma questão vem do `apresentar` "
+                     "(link de `figura_arquivo`) ou é redesenhada a partir da descrição.")
     for note in prova.get("observacoes") or []:
         rules.append(f"- Na prova (informado pelo aluno): {note}")
     for pref in materia.get("preferencias") or []:
