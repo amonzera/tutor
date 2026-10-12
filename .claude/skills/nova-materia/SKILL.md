@@ -1,14 +1,14 @@
 ---
 name: nova-materia
 description: Prepara uma matéria nova a partir do material em subjects/<pasta>/fontes/ (inventário, perguntas sobre a prova, ingestão, mapa de conhecimento, plano, banco de questões verificado às cegas). Retoma de onde parou se for interrompido.
-argument-hint: "<pasta> [figuras | respostas já conhecidas]"
+argument-hint: "<pasta> [respostas já conhecidas]"
 allowed-tools: Bash(bash bin/tutor.sh *)
 disable-model-invocation: true
 ---
 
 # Preparar uma matéria nova
 
-Argumentos: `$ARGUMENTS`. A primeira palavra é a pasta em `subjects/`. Se a segunda for `figuras`, a matéria já está pronta: chame o `ingestor-de-fontes` só para a tarefa "recortar figuras", relate o resultado e pare. Fora isso, o resto, se houver, são respostas que o aluno já deu (data da prova, formato, tempo diário...): use-as e **pergunte só o que faltar**.
+Argumentos: `$ARGUMENTS`. A primeira palavra é a pasta em `subjects/`. O resto, se houver, são respostas que o aluno já deu (data da prova, formato, tempo diário...): use-as e **pergunte só o que faltar**.
 
 Detalhes de formato e qualidade estão em [etapas.md](etapas.md). Leia antes da etapa 4.
 

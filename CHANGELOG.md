@@ -13,7 +13,7 @@ Todas as mudanças relevantes deste projeto. O formato segue o [Keep a Changelog
 
 ### Adicionado
 
-- Figuras: o tutor desenha os conceitos espaciais (vetores, forças, gráficos) e mostra a figura das questões de prova por link, recortada do PDF pelo subcomando `recortar`. Sem recorte, a figura é redesenhada a partir da descrição. `/nova-materia <pasta> figuras` faz os recortes numa matéria já pronta.
+- Figuras: o tutor desenha os conceitos espaciais (vetores, forças, gráficos) e mostra a figura das questões de prova por link, recortada do PDF pelo subcomando `recortar`. Sem recorte, a figura é redesenhada a partir da descrição.
 - Subcomando `trilha estudado`.
 - Funções em graus na calculadora (`sind`, `cosd`, `tand`, `asind`, `acosd`, `atand`, `atan2d`) e aviso quando a conta usa radianos.
 - Progresso da trilha no plano, no painel e no diário.

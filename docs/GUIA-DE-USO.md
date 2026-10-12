@@ -67,7 +67,6 @@ As revisões se espalham sozinhas ao longo da semana e param na véspera. A tril
 |---|---|
 | `/materias` | Lista as matérias, dias até a prova e revisões do dia. |
 | `/nova-materia <pasta>` | Prepara uma matéria nova. |
-| `/nova-materia <pasta> figuras` | Recorta as figuras das questões de prova numa matéria já pronta. |
 | `/estudar [matéria]` | Sessão diária completa. |
 | `/revisar` | Só as revisões do dia, de memória. |
 | `/quiz [matéria] [tema]` | Cinco questões rápidas. |
