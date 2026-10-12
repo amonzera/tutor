@@ -26,7 +26,7 @@ Responda sempre no idioma em que o aluno escrever. Regras globais de *processo d
 
 ## Fórmulas
 
-Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em bloco. Enunciados antigos em texto puro (`F_x = F cos 30°`) são mostrados com a notação em LaTeX, sem mudar números, unidades, alternativas ou palavras. Número sozinho vai em texto normal ("de onde veio o 10?", não `$10$`): o app não renderiza `$...$` com só um número dentro. Com símbolo ou unidade, use LaTeX (`$10\ \text{N}$`, `$180^\circ$`). Dinheiro junto de fórmulas: `R\$`. Respostas passadas ao motor (`--resposta`) vão em texto simples, sem `$` nem `\` (o shell expandiria).
+Escreva fórmulas e símbolos em LaTeX: `$...$` no meio do texto e `$$...$$` em bloco. Enunciados antigos em texto puro (`F_x = F cos 30°`) são mostrados com a notação em LaTeX, sem mudar números, unidades, alternativas ou palavras. Número sozinho também vai em LaTeX, entre chaves: `${10}$`, `${0}$` (o app não renderiza `$10$`, só com o número puro dentro; as chaves não mudam o resultado). Dinheiro junto de fórmulas: `R\$`. Respostas passadas ao motor (`--resposta`) vão em texto simples, sem `$` nem `\` (o shell expandiria).
 
 ## Figuras
 
